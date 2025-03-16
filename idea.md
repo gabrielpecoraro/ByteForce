@@ -10,7 +10,7 @@ Welcome to the **Ideas File**! This document serves as a central place for contr
 
 ---
 
-## Proposed Ideas
+## Proposed Ideas Templates [Please try to Standardize so it's not messy]
 ### 1. [Example Idea Title]
 **Description:** A brief explanation of the idea and how it improves the project.
 **Priority:** [High/Medium/Low]
@@ -22,19 +22,13 @@ Welcome to the **Ideas File**! This document serves as a central place for contr
 **Assigned To (Optional):** @username
 
 ---
+## Implementation Idea
 
-## Implemented Ideas
-Move completed ideas here to keep track of progress.
+Add ideas about the implementation of an architecture or just programming
 
-### 1. [Implemented Feature Title]
-**Description:** A brief summary of the idea and how it was implemented.
+## Architecture Idea
 
----
-
-### Notes:
-- Keep ideas relevant to the project's goals.
-- If an idea is large, consider breaking it into smaller tasks.
-- Be respectful when discussing different ideas.
+Add ideas about an architecture flow and so forth
 
 Happy brainstorming! 🚀
 

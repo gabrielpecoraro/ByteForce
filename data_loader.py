@@ -10,8 +10,7 @@ from pypdf import PdfReader
 import fitz
 from langchain.vectorstores import FAISS
 import pickle
-from langchain.llms import 
-
+# from langchain.llms import
 
 
 # Function to load PDFs using fitz (PyMuPDF)
@@ -22,28 +21,25 @@ def load_pdfs_with_fitz(folder_path):
             pdf_path = os.path.join(folder_path, pdf_file)
             try:
                 pdf_document = fitz.open(pdf_path)
-                print(f"✔ Successfully opened '{pdf_file}'. It has {pdf_document.page_count} pages.")
-                
+                print(
+                    f"✔ Successfully opened '{pdf_file}'. It has {pdf_document.page_count} pages."
+                )
+
                 # Extract text from each page
                 for page_num in range(pdf_document.page_count):
                     page = pdf_document[page_num]
                     text = page.get_text()  # Extract text from the page
                     # Append as a LangChain document
                     documents.append(
-                        Document(page_content=text, metadata={"file_name": pdf_file, "page": page_num + 1})
+                        Document(
+                            page_content=text,
+                            metadata={"file_name": pdf_file, "page": page_num + 1},
+                        )
                     )
                 pdf_document.close()
             except Exception as e:
                 print(f"⚠ Error reading '{pdf_file}': {e}")
     return documents
-
-
-
-
-
-
-
-
 
 
 # # Iterate through all files in the folder to see formatting problems
@@ -53,7 +49,7 @@ def load_pdfs_with_fitz(folder_path):
 #         try:
 #             # Load the PDF file
 #             reader = PdfReader(pdf_path)
-            
+
 #             # Check if the PDF is encrypted
 #             if reader.is_encrypted:
 #                 print(f" The PDF '{pdf_file}' is encrypted.")
@@ -71,15 +67,11 @@ def load_pdfs_with_fitz(folder_path):
 #             print(f" An unexpected error occurred with '{pdf_file}': {generic_error}")
 
 
-
-
-
 # Path to the folder containing your PDFs
 pdf_folder = "./Dataset_bis/"
 
 # Check if GPU is available
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-
 
 
 # Specify the path to your PDF file
@@ -125,17 +117,20 @@ embeddings = HuggingFaceEmbeddings(
 
 if os.path.exists(faiss_index_dir):
     # Load the existing FAISS index (embeddings generation is skipped)
-    faiss_index = FAISS.load_local(faiss_index_dir, embeddings, allow_dangerous_deserialization=True)
+    faiss_index = FAISS.load_local(
+        faiss_index_dir, embeddings, allow_dangerous_deserialization=True
+    )
     print("Loaded existing FAISS index from", faiss_index_dir)
 else:
     # If index doesn't exist, generate embeddings and build the index
     print("Generating embeddings for chunks...")
-    chunk_vectors = embeddings.embed_documents([chunk.page_content for chunk in chunks]) #should use gpu
+    chunk_vectors = embeddings.embed_documents(
+        [chunk.page_content for chunk in chunks]
+    )  # should use gpu
     text_embeddings = list(zip([chunk.page_content for chunk in chunks], chunk_vectors))
 
     # Note: The following line computes embeddings and builds the FAISS index
     faiss_index = FAISS.from_embeddings(text_embeddings, embeddings)
-
 
     faiss_index.save_local(faiss_index_dir)
     print("FAISS index built and saved to", faiss_index_dir)
@@ -143,23 +138,12 @@ else:
 print("finish")
 
 
-
-
-
 print("queries")
 
 query = "What is question 1"
 query_vector = embeddings.embed_query(query)
-results = faiss_index.similarity_search_by_vector(query_vector, k=5)  # `k` is the number of top matches
+results = faiss_index.similarity_search_by_vector(
+    query_vector, k=5
+)  # `k` is the number of top matches
 for result in results:
     print(result.page_content)  # This shows the most relevant text chunks
-
-
-
-
-
-
-
-
-
-

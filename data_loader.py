@@ -10,7 +10,7 @@ import sqlite3
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
 # Specify the path to your PDF files directory
-pdf_directory = "./Dataset_bis/"
+pdf_directory = "./Dataset/"
 
 # Load all PDF files from the directory
 loader = DirectoryLoader(pdf_directory, glob="*.pdf", loader_cls=UnstructuredPDFLoader)

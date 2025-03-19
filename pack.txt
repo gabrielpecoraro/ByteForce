@@ -9,5 +9,7 @@ brew install poppler
 unstructured_pytesseract
 brew install tesseract   
 pip3 install torch 
+
+brew-->choco if windows
 pip install -U langchain-huggingface
 brew install sqlite

@@ -1,0 +1,11 @@
+open_filename
+uninstall pdfminer
+pdfminer.six
+pi_heif
+unstructured_inference
+pdf2image
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+brew install poppler
+unstructured_pytesseract
+brew install tesseract   
+pip3 install torch 

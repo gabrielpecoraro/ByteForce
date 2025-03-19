@@ -8,6 +8,9 @@ import torch
 import os
 from pypdf import PdfReader
 import fitz
+from langchain.vectorstores import FAISS
+import pickle
+from langchain.llms import 
 
 
 
@@ -72,7 +75,7 @@ def load_pdfs_with_fitz(folder_path):
 
 
 # Path to the folder containing your PDFs
-pdf_folder = "./Dataset/"
+pdf_folder = "./Dataset_bis/"
 
 # Check if GPU is available
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
@@ -82,13 +85,25 @@ device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 # Specify the path to your PDF file
 print(device)
 
-print("a")
+print("Start")
+
+#
 # loader = DirectoryLoader(
 #     "./Dataset/", glob="./*.pdf", loader_cls=PyPDFLoader
 # )
-print("b")
+
 print("Loading PDFs...")
-documents = load_pdfs_with_fitz(pdf_folder)
+documents_file = "documents.pkl"
+if os.path.exists(documents_file):
+    with open(documents_file, "rb") as f:
+        documents = pickle.load(f)
+    print("Loaded cached documents from", documents_file)
+else:
+    print("Loading PDFs from folder...")
+    documents = load_pdfs_with_fitz(pdf_folder)
+    with open(documents_file, "wb") as f:
+        pickle.dump(documents, f)
+    print("Documents loaded and cached to", documents_file)
 
 # loader_one_doc = DirectoryLoader(
 #     "/1-EPC_17th_edition_2020_en.pdf",
@@ -96,18 +111,55 @@ documents = load_pdfs_with_fitz(pdf_folder)
 #     loader_cls=UnstructuredPDFLoader,
 # )
 # documents = loader.load()
-print("c")
+print("splitting pdfs...")
 
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-print("d")
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=20)
+
 chunks = text_splitter.split_documents(documents)
-print("e")
+print("embedding...")
 
+faiss_index_dir = "faiss_index"
 embeddings = HuggingFaceEmbeddings(
     model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 )
-print("f")
-chunk_vectors = embeddings.embed_documents([chunk.page_content for chunk in chunks])
-print("g")
+
+if os.path.exists(faiss_index_dir):
+    # Load the existing FAISS index (embeddings generation is skipped)
+    faiss_index = FAISS.load_local(faiss_index_dir, embeddings, allow_dangerous_deserialization=True)
+    print("Loaded existing FAISS index from", faiss_index_dir)
+else:
+    # If index doesn't exist, generate embeddings and build the index
+    print("Generating embeddings for chunks...")
+    chunk_vectors = embeddings.embed_documents([chunk.page_content for chunk in chunks]) #should use gpu
+    text_embeddings = list(zip([chunk.page_content for chunk in chunks], chunk_vectors))
+
+    # Note: The following line computes embeddings and builds the FAISS index
+    faiss_index = FAISS.from_embeddings(text_embeddings, embeddings)
+
+
+    faiss_index.save_local(faiss_index_dir)
+    print("FAISS index built and saved to", faiss_index_dir)
+
+print("finish")
+
+
+
+
+
+print("queries")
+
+query = "What is question 1"
+query_vector = embeddings.embed_query(query)
+results = faiss_index.similarity_search_by_vector(query_vector, k=5)  # `k` is the number of top matches
+for result in results:
+    print(result.page_content)  # This shows the most relevant text chunks
+
+
+
+
+
+
+
+
 
 

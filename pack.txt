@@ -15,3 +15,5 @@ pip install -U langchain-huggingface
 brew install sqlite
 faiss-cpu
  PyMuPDF
+ gensim
+ nltk

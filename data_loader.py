@@ -1,16 +1,21 @@
-from langchain.document_loaders import UnstructuredPDFLoader
-from langchain.document_loaders import PyPDFLoader
+import os
+import pickle
+import string
+import torch
+import fitz
+import nltk
 from langchain.document_loaders import DirectoryLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.schema import Document
-import torch
-import os
-from pypdf import PdfReader
-import fitz
 from langchain.vectorstores import FAISS
-import pickle
-# from langchain.llms import
+from pypdf import PdfReader
+import gensim
+import gensim.corpora as corpora
+from nltk.corpus import stopwords
+
+# Download NLTK stopwords if not already available
+nltk.download("stopwords")
 
 
 # Function to load PDFs using fitz (PyMuPDF)
@@ -108,6 +113,31 @@ print("splitting pdfs...")
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=20)
 
 chunks = text_splitter.split_documents(documents)
+
+print("topic modeling ")
+# LDA Topic Modeling
+def preprocess_text(text):
+    tokens = text.lower().split()
+    tokens = [word.strip(string.punctuation) for word in tokens if word.strip(string.punctuation)]
+    stop_words = set(stopwords.words("english"))
+    return [word for word in tokens if word not in stop_words]
+
+docs = [chunk.page_content for chunk in chunks if chunk.page_content.strip()]
+processed_docs = [preprocess_text(doc) for doc in docs]
+dictionary = corpora.Dictionary(processed_docs)
+corpus = [dictionary.doc2bow(text) for text in processed_docs]
+
+lda_model = gensim.models.LdaModel(corpus, num_topics=5, id2word=dictionary, passes=10)
+
+for i, tokens in enumerate(processed_docs):
+    bow = dictionary.doc2bow(tokens)
+    topic_probs = lda_model.get_document_topics(bow)
+    dominant_topic = max(topic_probs, key=lambda x: x[1])[0] if topic_probs else None
+    chunks[i].metadata['dominant_topic'] = dominant_topic
+
+
+
+
 print("embedding...")
 
 faiss_index_dir = "faiss_index"

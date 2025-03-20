@@ -13,3 +13,5 @@ pip3 install torch
 brew-->choco if windows
 pip install -U langchain-huggingface
 brew install sqlite
+faiss-cpu
+ PyMuPDF

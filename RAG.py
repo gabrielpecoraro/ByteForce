@@ -1,35 +1,32 @@
-from langchain.embeddings import HuggingFaceEmbeddings
 import os
+from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import FAISS
+from langchain.chains import RetrievalQA
+from langchain.llms import HuggingFacePipeline
+from transformers import pipeline
 
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-)
+def load_faiss_index(faiss_index_dir, embeddings):
+    if os.path.exists(faiss_index_dir):
+        return FAISS.load_local(faiss_index_dir, embeddings, allow_dangerous_deserialization=True)
+    else:
+        print("FAISS index directory not found.")
+        return None
 
+def advanced_retriever(query, faiss_index, k=5, chain_type="refine"):
+    retriever = faiss_index.as_retriever(search_type="similarity", search_kwargs={"k": k})
+    gen_pipeline = pipeline("text-generation", model="gpt2", max_new_tokens=100)
+    llm = HuggingFacePipeline(pipeline=gen_pipeline)
+    qa_chain = RetrievalQA.from_chain_type(llm=llm, chain_type=chain_type, retriever=retriever)
+    return qa_chain.run(query)
 
 faiss_index_dir = "faiss_index"
+embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+faiss_index = load_faiss_index(faiss_index_dir, embeddings)
 
-
-print("queries")
-
-
-
-if os.path.exists(faiss_index_dir):
-    # Load the existing FAISS index (embeddings generation is skipped)
-    faiss_index = FAISS.load_local(
-        faiss_index_dir, embeddings, allow_dangerous_deserialization=True
-    )
-    print("Loaded existing FAISS index from", faiss_index_dir)
+if faiss_index:
+    query = "Generate a challenging exam question on constitutional law."
+    print("Query:", query)
+    output = advanced_retriever(query, faiss_index, k=5, chain_type="refine")
+    print("\nAdvanced RAG Output:\n", output)
 else:
-    print("Must have a faiss_index to proceed")
-
-
-query = "What is question 1"
-query_vector = embeddings.embed_query(query)
-results = faiss_index.similarity_search_by_vector(
-    query_vector, k=5
-)  # `k` is the number of top matches
-for result in results:
-    print(result.page_content)  # This shows the most relevant text chunks
-
-
+    print("No FAISS index available.")

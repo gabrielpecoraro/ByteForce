@@ -138,12 +138,4 @@ else:
 print("finish")
 
 
-print("queries")
 
-query = "What is question 1"
-query_vector = embeddings.embed_query(query)
-results = faiss_index.similarity_search_by_vector(
-    query_vector, k=5
-)  # `k` is the number of top matches
-for result in results:
-    print(result.page_content)  # This shows the most relevant text chunks

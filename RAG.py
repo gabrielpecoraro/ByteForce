@@ -12,7 +12,7 @@ def load_faiss_index(faiss_index_dir, embeddings):
         print("FAISS index directory not found.")
         return None
 
-def advanced_retriever(query, faiss_index, k=5, chain_type="refine"):
+def advanced_retriever(query, faiss_index, k=10, chain_type="refine"):
     retriever = faiss_index.as_retriever(search_type="similarity", search_kwargs={"k": k})
     gen_pipeline = pipeline("text-generation", model="gpt2", max_new_tokens=100)
     llm = HuggingFacePipeline(pipeline=gen_pipeline)
@@ -24,7 +24,7 @@ embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-
 faiss_index = load_faiss_index(faiss_index_dir, embeddings)
 
 if faiss_index:
-    query = "Generate a challenging exam question on constitutional law."
+    query = "What is article 1"
     print("Query:", query)
     output = advanced_retriever(query, faiss_index, k=5, chain_type="refine")
     print("\nAdvanced RAG Output:\n", output)

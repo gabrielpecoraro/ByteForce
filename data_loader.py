@@ -14,9 +14,6 @@ import gensim
 import gensim.corpora as corpora
 from nltk.corpus import stopwords
 
-# Download NLTK stopwords if not already available
-nltk.download("stopwords")
-
 
 # Function to load PDFs using fitz (PyMuPDF)
 def load_pdfs_with_fitz(folder_path):

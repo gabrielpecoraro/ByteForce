@@ -44,31 +44,6 @@ def load_pdfs_with_fitz(folder_path):
     return documents
 
 
-# # Iterate through all files in the folder to see formatting problems
-# for pdf_file in os.listdir(pdf_folder):
-#     if pdf_file.endswith(".pdf"):  # Ensure it's a PDF
-#         pdf_path = os.path.join(pdf_folder, pdf_file)
-#         try:
-#             # Load the PDF file
-#             reader = PdfReader(pdf_path)
-
-#             # Check if the PDF is encrypted
-#             if reader.is_encrypted:
-#                 print(f" The PDF '{pdf_file}' is encrypted.")
-#                 # Attempt decryption (replace 'password' with the actual password if known)
-#                 try:
-#                     reader.decrypt("password")
-#                     print(f" Successfully decrypted '{pdf_file}'.")
-#                 except Exception as decrypt_error:
-#                     print(f" Failed to decrypt '{pdf_file}': {decrypt_error}")
-#             else:
-#                 print(f" The PDF '{pdf_file}' is not encrypted.")
-#         except PdfReadError as e:
-#             print(f" Error reading '{pdf_file}': {e}")
-#         except Exception as generic_error:
-#             print(f" An unexpected error occurred with '{pdf_file}': {generic_error}")
-
-
 # Path to the folder containing your PDFs
 pdf_folder = "./Dataset_bis/"
 
@@ -99,12 +74,6 @@ else:
         pickle.dump(documents, f)
     print("Documents loaded and cached to", documents_file)
 
-# loader_one_doc = DirectoryLoader(
-#     "/1-EPC_17th_edition_2020_en.pdf",
-#     glob="./*.pdf",
-#     loader_cls=UnstructuredPDFLoader,
-# )
-# documents = loader.load()
 print("splitting pdfs...")
 
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=20)
@@ -112,12 +81,19 @@ text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=20)
 chunks = text_splitter.split_documents(documents)
 
 print("topic modeling ")
+
+
 # LDA Topic Modeling
 def preprocess_text(text):
     tokens = text.lower().split()
-    tokens = [word.strip(string.punctuation) for word in tokens if word.strip(string.punctuation)]
+    tokens = [
+        word.strip(string.punctuation)
+        for word in tokens
+        if word.strip(string.punctuation)
+    ]
     stop_words = set(stopwords.words("english"))
     return [word for word in tokens if word not in stop_words]
+
 
 docs = [chunk.page_content for chunk in chunks if chunk.page_content.strip()]
 processed_docs = [preprocess_text(doc) for doc in docs]
@@ -130,9 +106,7 @@ for i, tokens in enumerate(processed_docs):
     bow = dictionary.doc2bow(tokens)
     topic_probs = lda_model.get_document_topics(bow)
     dominant_topic = max(topic_probs, key=lambda x: x[1])[0] if topic_probs else None
-    chunks[i].metadata['dominant_topic'] = dominant_topic
-
-
+    chunks[i].metadata["dominant_topic"] = dominant_topic
 
 
 print("embedding...")
@@ -163,6 +137,3 @@ else:
     print("FAISS index built and saved to", faiss_index_dir)
 
 print("finish")
-
-
-

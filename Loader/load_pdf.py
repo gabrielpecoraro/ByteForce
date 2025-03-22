@@ -32,12 +32,20 @@ class PDFLoader:
         pkl_file = f"{doc_type}.pkl"
         documents = []
 
+        # Create an empty .pkl file if it doesn't exist
+        if not os.path.exists(pkl_file):
+            with open(pkl_file, "wb") as f:
+                pickle.dump(documents, f)
+            print(f"✔ Created new '{pkl_file}' file.")
+
         if pdf_file.endswith(".pdf"):  # Ensure it's a PDF
             pdf_path = os.path.join(folder_path, pdf_file)
             try:
                 # Open the PDF
                 pdf_document = fitz.open(pdf_path)
-                print(f"✔ Successfully opened '{pdf_file}'. It has {pdf_document.page_count} pages.")
+                print(
+                    f"✔ Successfully opened '{pdf_file}'. It has {pdf_document.page_count} pages."
+                )
 
                 # Extract text from each page and store as a LangChain Document
                 for page_num in range(pdf_document.page_count):
@@ -69,7 +77,7 @@ class PDFLoader:
                 print(f"⚠ Error reading '{pdf_file}': {e}")
         else:
             print(f"⚠ '{pdf_file}' is not a valid PDF file.")
-        
+
         return documents
 
     def process_dataset(self, dataset_path):
@@ -156,6 +164,28 @@ class PDFLoader:
         """
         words = text.split()
         chunks = [
-            " ".join(words[i: i + chunk_size]) for i in range(0, len(words), chunk_size)
+            " ".join(words[i : i + chunk_size])
+            for i in range(0, len(words), chunk_size)
         ]
         return chunks
+
+
+if __name__ == "__main__":
+    loader = PDFLoader()
+    dataset_path = "../Dataset/"
+    loader.load_and_save_pdf(
+        "../Dataset/1-EPC_17th_edition_2020_en.pdf", "epc", dataset_path
+    )
+    loader.process_dataset(dataset_path)
+    pkl_path = "epc.pkl"
+    chapters_with_articles = loader.partition_in_chapter_and_article_from_pkl(pkl_path)
+
+    # Print the chunked text for inspection
+    for chapter in chapters_with_articles:
+        for article in chapter:
+            chunks = loader.chunk_text(article)
+            print(
+                f"Article: {article[:50]}..."
+            )  # Print the first 50 characters of the article for reference
+            print(f"Chunks: {chunks}")
+            print("-" * 80)

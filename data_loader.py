@@ -13,39 +13,15 @@ from pypdf import PdfReader
 import gensim
 import gensim.corpora as corpora
 from nltk.corpus import stopwords
+from Loader.load_pdf import PDFLoader 
 
 
-# Function to load PDFs using fitz (PyMuPDF)
-def load_pdfs_with_fitz(folder_path):
-    documents = []
-    for pdf_file in os.listdir(folder_path):
-        if pdf_file.endswith(".pdf"):  # Ensure it's a PDF
-            pdf_path = os.path.join(folder_path, pdf_file)
-            try:
-                pdf_document = fitz.open(pdf_path)
-                print(
-                    f"✔ Successfully opened '{pdf_file}'. It has {pdf_document.page_count} pages."
-                )
 
-                # Extract text from each page
-                for page_num in range(pdf_document.page_count):
-                    page = pdf_document[page_num]
-                    text = page.get_text()  # Extract text from the page
-                    # Append as a LangChain document
-                    documents.append(
-                        Document(
-                            page_content=text,
-                            metadata={"file_name": pdf_file, "page": page_num + 1},
-                        )
-                    )
-                pdf_document.close()
-            except Exception as e:
-                print(f"⚠ Error reading '{pdf_file}': {e}")
-    return documents
 
 
 # Path to the folder containing your PDFs
 pdf_folder = "./Dataset_bis/"
+
 
 # Check if GPU is available
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
@@ -56,23 +32,11 @@ print(device)
 
 print("Start")
 
-#
-# loader = DirectoryLoader(
-#     "./Dataset/", glob="./*.pdf", loader_cls=PyPDFLoader
-# )
 
 print("Loading PDFs...")
-documents_file = "documents.pkl"
-if os.path.exists(documents_file):
-    with open(documents_file, "rb") as f:
-        documents = pickle.load(f)
-    print("Loaded cached documents from", documents_file)
-else:
-    print("Loading PDFs from folder...")
-    documents = load_pdfs_with_fitz(pdf_folder)
-    with open(documents_file, "wb") as f:
-        pickle.dump(documents, f)
-    print("Documents loaded and cached to", documents_file)
+loader=PDFLoader.process_dataset(pdf_folder)
+
+
 
 print("splitting pdfs...")
 

@@ -10,13 +10,11 @@ from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.schema import Document
 from langchain.vectorstores import FAISS
 from pypdf import PdfReader
-import gensim
-import gensim.corpora as corpora
+
+# import gensim
+# import gensim.corpora as corpora
 from nltk.corpus import stopwords
-from Loader.load_pdf import PDFLoader 
-
-
-
+from Loader.load_pdf import PDFLoader
 
 
 # Path to the folder containing your PDFs
@@ -34,11 +32,11 @@ print("Start")
 
 
 print("Loading PDFs...")
-loader=PDFLoader.process_dataset(pdf_folder)
+loader = PDFLoader()
+loader.load_and_save_pdf("/Dataset/1-EPC_17th_edition_2020_en.pdf", "epc", pdf_folder)
 
 
-
-print("splitting pdfs...")
+"""print("splitting pdfs...")
 
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=20)
 
@@ -100,4 +98,4 @@ else:
     faiss_index.save_local(faiss_index_dir)
     print("FAISS index built and saved to", faiss_index_dir)
 
-print("finish")
+print("finish")"""

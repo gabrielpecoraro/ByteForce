@@ -3,3 +3,6 @@
 
 # Ignore the faiss_index folder
 faiss_index/
+
+# Ignore pycache in Loader
+Loader/__pycache__/

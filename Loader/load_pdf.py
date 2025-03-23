@@ -2,6 +2,7 @@ import os
 import pickle
 import fitz  # PyMuPDF
 from langchain.schema import Document
+import re
 
 
 class PDFLoader:
@@ -11,8 +12,15 @@ class PDFLoader:
         self.EPCarticle_titles = ["Article", "Artikel", "Article"]
 
         # For PCT
-        self.PCTarticle_titles = ["Article", "Artikel", "Article"]
-        self.PCTrule_titles = ["Rule", "Regel", "Règle"]
+        self.PCTarticle_titles = ["Article"]
+        self.PCTrule_titles = ["Rule"]
+
+        #For guidlines
+        self.guidlinechapter_titles = ["Chapter"]
+
+
+
+
 
     def detect_document_type(self, pdf_name):
         """
@@ -190,6 +198,35 @@ class PDFLoader:
                     chapters_with_articles.append("\n".join(current_article))
 
             return chapters_with_articles
+        
+
+
+        elif "guidlines" in pkl_path:
+            chapters = []
+            current_chapter = []
+            for doc in documents:
+                lines = doc.page_content.splitlines()
+                for line_text in lines:
+                    # Check if the line is bold AND either:
+                    # 1. Contains one of the guideline chapter titles, OR
+                    # 2. Starts with a number
+                    if self.is_bold(line_text) and (
+                    any(title in line_text for title in self.guidlinechapter_titles) or 
+                    re.match(r'^\d', line_text) or 
+                    re.match(r'^Chapter\s+[IVXLCDM]+', line_text)):
+                        if current_chapter:
+                            chapters.append(current_chapter)
+                            current_chapter = []
+                    current_chapter.append(line_text)
+                if current_chapter:
+                    chapters.append(current_chapter)
+            # Depending on your needs, you could add an additional partitioning into articles here.
+            # For now, we return the chapters.
+            return chapters
+
+
+
+
 
     def chunk_text(self, text, chunk_size=512):
         """
@@ -205,7 +242,7 @@ class PDFLoader:
 
 if __name__ == "__main__":
     loader = PDFLoader()
-    dataset_path = "../Dataset_bis/"
+    dataset_path = "./Dataset_bis/"
 
     # Process the dataset
     loader.process_dataset(dataset_path)

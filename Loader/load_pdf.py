@@ -205,7 +205,7 @@ class PDFLoader:
 
 if __name__ == "__main__":
     loader = PDFLoader()
-    dataset_path = "../Dataset_bis/"
+    dataset_path = "."
 
     # Process the dataset
     loader.process_dataset(dataset_path)

@@ -225,15 +225,19 @@ class PDFLoader:
             # Depending on your needs, you could add an additional partitioning into articles here.
             # For now, we return the chapters.
             return chapters
-        
-        elif "case_law" in pkl_path:  # Replace "your_type" with the document type's name
+
+        elif (
+            "case_law" in pkl_path
+        ):  # Replace "your_type" with the document type's name
             chapters = []
             current_chapter = []
             for doc in documents:
                 lines = doc.page_content.splitlines()
                 for line_text in lines:
                     # Check if the line starts with numbers (e.g., 3.2.3) OR letters followed by a parenthesis (e.g., a), b))
-                    if re.match(r"^\d+(\.\d+)*\s", line_text) or re.match(r"^[a-zA-Z]\)\s", line_text):
+                    if re.match(r"^\d+(\.\d+)*\s", line_text) or re.match(
+                        r"^[a-zA-Z]\)\s", line_text
+                    ):
                         if current_chapter:
                             chapters.append(current_chapter)
                             current_chapter = []
@@ -265,7 +269,7 @@ class PDFLoader:
 
             return paragraphs
 
-    def chunk_text(self, text, chunk_size=512,overlap=100):
+    def chunk_text(self, text, chunk_size=512, overlap=100):
         """
         Chunk the text into smaller overlapping pieces.
         """
@@ -279,7 +283,7 @@ class PDFLoader:
 
 if __name__ == "__main__":
     loader = PDFLoader()
-    dataset_path = "../Dataset"
+    dataset_path = "../Dataset_bis"
     pkl_folder = os.path.join(dataset_path, "pkl")
     os.makedirs(pkl_folder, exist_ok=True)  # Create the pkl folder if it doesn't exist
 

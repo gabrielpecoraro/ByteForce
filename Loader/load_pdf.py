@@ -3,6 +3,7 @@ import pickle
 import fitz  # PyMuPDF
 from langchain.schema import Document
 import re
+from termcolor import colored
 
 
 class PDFLoader:
@@ -18,6 +19,8 @@ class PDFLoader:
         # For guidlines
         self.guidlinechapter_titles = ["Chapter"]
 
+        # For exam
+
     def detect_document_type(self, pdf_name):
         """
         Detect the document type based on the name of the PDF file.
@@ -29,16 +32,20 @@ class PDFLoader:
             return "pct"
         elif "epc" in pdf_name_lower:
             return "epc"
-        elif "case_law" in pdf_name_lower:
+        elif ("case_law" or "case law") in pdf_name_lower:
             return "case_law"
         else:
-            return "unknown"  # For unsupported types
+            return "exam"  # For unsupported types
 
     def load_and_save_pdf(self, pdf_file, doc_type, folder_path):
         """
         Load a PDF file and save extracted content into a .pkl file.
         """
-        pkl_file = f"{doc_type}.pkl"
+        pkl_folder = os.path.join(folder_path, "pkl")
+        os.makedirs(
+            pkl_folder, exist_ok=True
+        )  # Create the pkl folder if it doesn't exist
+        pkl_file = os.path.join(pkl_folder, f"{doc_type}.pkl")
         documents = []
 
         # Create an empty .pkl file if it doesn't exist
@@ -236,7 +243,29 @@ class PDFLoader:
             # Return the chunked chapters for the document type
             return chapters
 
-    def chunk_text(self, text, chunk_size=512, overlap=100):
+        elif "exam" in pkl_path:
+            paragraphs = []
+            current_paragraph = []
+
+            # Process each document (assuming each document has `page_content` containing text)
+            for doc in documents:
+                lines = (
+                    doc.page_content.splitlines()
+                )  # Split the page content into lines
+                for line_text in lines:
+                    # Check if the line is a full blank line
+                    if line_text.strip() == "":
+                        if current_paragraph:
+                            paragraphs.append("\n".join(current_paragraph))
+                            current_paragraph = []
+                    else:
+                        current_paragraph.append(line_text)
+                if current_paragraph:  # Append the last paragraph
+                    paragraphs.append("\n".join(current_paragraph))
+
+            return paragraphs
+
+    def chunk_text(self, text, chunk_size=512,overlap=100):
         """
         Chunk the text into smaller overlapping pieces.
         """
@@ -250,25 +279,35 @@ class PDFLoader:
 
 if __name__ == "__main__":
     loader = PDFLoader()
-    dataset_path = "./Dataset_bis/"
+    dataset_path = "../Dataset"
+    pkl_folder = os.path.join(dataset_path, "pkl")
+    os.makedirs(pkl_folder, exist_ok=True)  # Create the pkl folder if it doesn't exist
 
     # Process the dataset
     loader.process_dataset(dataset_path)
 
     # Assuming you want to process all .pkl files generated
-    for pkl_file in os.listdir(dataset_path):
+    for pkl_file in os.listdir(pkl_folder):
+        print(colored(f"Processing '{pkl_file}'...", "red"))
         if pkl_file.endswith(".pkl"):
-            pkl_path = os.path.join(dataset_path, pkl_file)
-            chapters_with_articles = loader.partition_in_chapter_and_article_from_pkl(
-                pkl_path
-            )
+            pkl_path = os.path.join(pkl_folder, pkl_file)
+            parsed_content = loader.partition_in_chapter_and_article_from_pkl(pkl_path)
 
             # Print the chunked text for inspection
-            for chapter in chapters_with_articles:
-                for article in chapter:
-                    chunks = loader.chunk_text(article)
+            if "exam" in pkl_file:
+                for paragraph in parsed_content:
+                    chunks = loader.chunk_text(paragraph)
                     print(
-                        f"Article: {article[:50]}..."
-                    )  # Print the first 50 characters of the article for reference
+                        f"Paragraph: {paragraph[:50]}..."
+                    )  # Print the first 50 characters of the paragraph for reference
                     print(f"Chunks: {chunks}")
                     print("-" * 80)
+            else:
+                for chapter in parsed_content:
+                    for article in chapter:
+                        chunks = loader.chunk_text(article)
+                        print(
+                            f"Article: {article[:50]}..."
+                        )  # Print the first 50 characters of the article for reference
+                        print(f"Chunks: {chunks}")
+                        print("-" * 80)

@@ -29,7 +29,7 @@ class PDFLoader:
             return "pct"
         elif "epc" in pdf_name_lower:
             return "epc"
-        elif "case law" in pdf_name_lower:
+        elif "case_law" in pdf_name_lower:
             return "case_law"
         else:
             return "unknown"  # For unsupported types
@@ -218,22 +218,39 @@ class PDFLoader:
             # Depending on your needs, you could add an additional partitioning into articles here.
             # For now, we return the chapters.
             return chapters
+        
+        elif "case_law" in pkl_path:  # Replace "your_type" with the document type's name
+            chapters = []
+            current_chapter = []
+            for doc in documents:
+                lines = doc.page_content.splitlines()
+                for line_text in lines:
+                    # Check if the line starts with numbers (e.g., 3.2.3) OR letters followed by a parenthesis (e.g., a), b))
+                    if re.match(r"^\d+(\.\d+)*\s", line_text) or re.match(r"^[a-zA-Z]\)\s", line_text):
+                        if current_chapter:
+                            chapters.append(current_chapter)
+                            current_chapter = []
+                    current_chapter.append(line_text)
+                if current_chapter:
+                    chapters.append(current_chapter)
+            # Return the chunked chapters for the document type
+            return chapters
 
-    def chunk_text(self, text, chunk_size=512):
+    def chunk_text(self, text, chunk_size=512, overlap=100):
         """
-        Chunk the text into smaller pieces.
+        Chunk the text into smaller overlapping pieces.
         """
         words = text.split()
         chunks = [
             " ".join(words[i : i + chunk_size])
-            for i in range(0, len(words), chunk_size)
+            for i in range(0, len(words), chunk_size - overlap)
         ]
         return chunks
 
 
 if __name__ == "__main__":
     loader = PDFLoader()
-    dataset_path = "../Dataset_bis/"
+    dataset_path = "./Dataset_bis/"
 
     # Process the dataset
     loader.process_dataset(dataset_path)

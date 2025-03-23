@@ -6,8 +6,13 @@ from langchain.schema import Document
 
 class PDFLoader:
     def __init__(self):
-        self.chapter_titles = ["Chapter", "Chapitre", "Kapitel"]
-        self.article_titles = ["Article", "Artikel", "Article"]
+        # For EPC
+        self.EPCchapter_titles = ["Chapter", "Chapitre", "Kapitel"]
+        self.EPCarticle_titles = ["Article", "Artikel", "Article"]
+
+        # For PCT
+        self.PCTarticle_titles = ["Article", "Artikel", "Article"]
+        self.PCTrule_titles = ["Rule", "Regel", "Règle"]
 
     def detect_document_type(self, pdf_name):
         """
@@ -127,36 +132,64 @@ class PDFLoader:
         except Exception as e:
             raise RuntimeError(f"An error occurred while loading '{pkl_path}': {e}")
 
-        # Process each document (assuming each document has `page_content` containing text)
-        for doc in documents:
-            lines = doc.page_content.splitlines()  # Split the page content into lines
-            for line_text in lines:
-                # Check if the line matches chapter titles
-                if any(title in line_text for title in self.chapter_titles):
-                    if current_chapter:
-                        chapters.append(current_chapter)
-                        current_chapter = []
-                current_chapter.append(line_text)
-            if current_chapter:  # Append the last chapter
-                chapters.append(current_chapter)
+        # If file is EPC
+        if "epc" in pkl_path:
+            # Process each document (assuming each document has `page_content` containing text)
+            for doc in documents:
+                lines = (
+                    doc.page_content.splitlines()
+                )  # Split the page content into lines
+                for line_text in lines:
+                    # Check if the line matches chapter titles
+                    if any(title in line_text for title in self.EPCchapter_titles):
+                        if current_chapter:
+                            chapters.append(current_chapter)
+                            current_chapter = []
+                    current_chapter.append(line_text)
+                if current_chapter:  # Append the last chapter
+                    chapters.append(current_chapter)
 
-        # Partition chapters into articles
-        chapters_with_articles = []
-        for chapter in chapters:
-            articles = []
+            # Partition chapters into articles
+            chapters_with_articles = []
+            for chapter in chapters:
+                articles = []
+                current_article = []
+                for line in chapter:
+                    # Check if the line matches article titles
+                    if any(title in line for title in self.EPCarticle_titles):
+                        if current_article:
+                            articles.append("\n".join(current_article))
+                            current_article = []
+                    current_article.append(line)
+                if current_article:  # Append the last article
+                    articles.append("\n".join(current_article))
+                chapters_with_articles.append(articles)
+
+            return chapters_with_articles
+
+        elif "pct" in pkl_path:
+            chapters_with_articles = []
             current_article = []
-            for line in chapter:
-                # Check if the line matches article titles
-                if any(title in line for title in self.article_titles):
-                    if current_article:
-                        articles.append("\n".join(current_article))
-                        current_article = []
-                current_article.append(line)
-            if current_article:  # Append the last article
-                articles.append("\n".join(current_article))
-            chapters_with_articles.append(articles)
 
-        return chapters_with_articles
+            # Process each document (assuming each document has `page_content` containing text)
+            for doc in documents:
+                lines = (
+                    doc.page_content.splitlines()
+                )  # Split the page content into lines
+                for line_text in lines:
+                    # Check if the line matches article or rule titles in bold
+                    if any(
+                        title in line_text
+                        for title in self.PCTarticle_titles + self.PCTrule_titles
+                    ) and self.is_bold(line_text):
+                        if current_article:
+                            chapters_with_articles.append("\n".join(current_article))
+                            current_article = []
+                    current_article.append(line_text)
+                if current_article:  # Append the last article
+                    chapters_with_articles.append("\n".join(current_article))
+
+            return chapters_with_articles
 
     def chunk_text(self, text, chunk_size=512):
         """
@@ -172,20 +205,25 @@ class PDFLoader:
 
 if __name__ == "__main__":
     loader = PDFLoader()
-    dataset_path = "../Dataset/"
-    loader.load_and_save_pdf(
-        "../Dataset/1-EPC_17th_edition_2020_en.pdf", "epc", dataset_path
-    )
-    loader.process_dataset(dataset_path)
-    pkl_path = "epc.pkl"
-    chapters_with_articles = loader.partition_in_chapter_and_article_from_pkl(pkl_path)
+    dataset_path = "../Dataset_bis/"
 
-    # Print the chunked text for inspection
-    for chapter in chapters_with_articles:
-        for article in chapter:
-            chunks = loader.chunk_text(article)
-            print(
-                f"Article: {article[:50]}..."
-            )  # Print the first 50 characters of the article for reference
-            print(f"Chunks: {chunks}")
-            print("-" * 80)
+    # Process the dataset
+    loader.process_dataset(dataset_path)
+
+    # Assuming you want to process all .pkl files generated
+    for pkl_file in os.listdir(dataset_path):
+        if pkl_file.endswith(".pkl"):
+            pkl_path = os.path.join(dataset_path, pkl_file)
+            chapters_with_articles = loader.partition_in_chapter_and_article_from_pkl(
+                pkl_path
+            )
+
+            # Print the chunked text for inspection
+            for chapter in chapters_with_articles:
+                for article in chapter:
+                    chunks = loader.chunk_text(article)
+                    print(
+                        f"Article: {article[:50]}..."
+                    )  # Print the first 50 characters of the article for reference
+                    print(f"Chunks: {chunks}")
+                    print("-" * 80)

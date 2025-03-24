@@ -45,13 +45,11 @@ class PDFLoader:
         """
         Detect the year from the PDF file name. Assumes year format is 19xx or 20xx.
         """
-        match = re.search(r"(19|20)\d{2}", pdf_name)
+        match = re.search(r'(19|20)\d{2}', pdf_name)
         if match:
             return int(match.group(0))
         else:
-            raise ValueError(
-                f"Year not found in '{pdf_name}'. Ensure filename contains a year (19xx or 20xx)."
-            )
+            raise ValueError(f"Year not found in '{pdf_name}'. Ensure filename contains a year (19xx or 20xx).")
 
     def load_and_save_pdf(self, pdf_file, doc_type, folder_path):
         """
@@ -69,12 +67,8 @@ class PDFLoader:
             with open(pkl_file, "rb") as f:
                 existing_documents = pickle.load(f)
             # Check if this PDF file was already processed
-            if any(
-                doc.metadata.get("file_name") == pdf_file for doc in existing_documents
-            ):
-                print(
-                    f"✔ '{pdf_file}' already exists in '{pkl_file}'. Skipping processing."
-                )
+            if any(doc.metadata.get("file_name") == pdf_file for doc in existing_documents):
+                print(f"✔ '{pdf_file}' already exists in '{pkl_file}'. Skipping processing.")
                 return existing_documents
             documents = existing_documents
         else:
@@ -87,9 +81,7 @@ class PDFLoader:
             pdf_path = os.path.join(folder_path, pdf_file)
             try:
                 pdf_document = fitz.open(pdf_path)
-                print(
-                    f"✔ Successfully opened '{pdf_file}'. It has {pdf_document.page_count} pages."
-                )
+                print(f"✔ Successfully opened '{pdf_file}'. It has {pdf_document.page_count} pages.")
 
                 for page_num in range(pdf_document.page_count):
                     page = pdf_document[page_num]
@@ -169,10 +161,7 @@ class PDFLoader:
             for doc in documents:
                 lines = doc.page_content.splitlines()
                 for line_text in lines:
-                    if any(
-                        title in line_text
-                        for title in self.PCTarticle_titles + self.PCTrule_titles
-                    ) and self.is_bold(line_text):
+                    if any(title in line_text for title in self.PCTarticle_titles + self.PCTrule_titles) and self.is_bold(line_text):
                         if current_article:
                             articles.append("\n".join(current_article))
                             current_article = []
@@ -180,6 +169,7 @@ class PDFLoader:
                 if current_article:
                     articles.append("\n".join(current_article))
             structured_content = articles
+            
 
         elif doc_type == "guidelines":
             chapters = []
@@ -206,9 +196,7 @@ class PDFLoader:
             for doc in documents:
                 lines = doc.page_content.splitlines()
                 for line_text in lines:
-                    if re.match(r"^\d+(\.\d+)*\s", line_text) or re.match(
-                        r"^[a-zA-Z]\)\s", line_text
-                    ):
+                    if re.match(r"^\d+(\.\d+)*\s", line_text) or re.match(r"^[a-zA-Z]\)\s", line_text):
                         if current_chapter:
                             chapters.append(current_chapter)
                             current_chapter = []
@@ -226,12 +214,10 @@ class PDFLoader:
                 lines = doc.page_content.splitlines()
                 for line_text in lines:
                     is_new_item = (
-                        any(
-                            line_text.strip().startswith(title)
-                            for title in self.examquestions_titles
-                        )
-                        or re.match(r"^\d+\.", line_text.strip())
-                    ) and self.is_bold(line_text)
+                        (any(line_text.strip().startswith(title) for title in self.examquestions_titles)
+                         or re.match(r"^\d+\.", line_text.strip()))
+                        and self.is_bold(line_text)
+                    )
 
                     if is_new_item:
                         if current_item:
@@ -244,7 +230,11 @@ class PDFLoader:
 
             structured_content = {f"{item_type}s": content_list}
 
-        return {"type": doc_type, "year": doc_year, "content": structured_content}
+        return {
+            "type": doc_type,
+            "year": doc_year,
+            "content": structured_content
+        }
 
     def chunk_text(self, structured_dict, chunk_size=1024, overlap=256):
         """
@@ -271,43 +261,38 @@ class PDFLoader:
 
         words = text.split()
         chunks = [
-            " ".join(words[i : i + chunk_size])
+            " ".join(words[i:i + chunk_size])
             for i in range(0, len(words), chunk_size - overlap)
         ]
-        return chunks
+        metadata_chunks = [
+            {"type": structured_dict["type"], "year": structured_dict["year"], "chunk_index": idx}
+            for idx, _ in enumerate(chunks)
+        ]
+        return [{"content": chunk, "metadata": metadata_chunks[idx]} for idx, chunk in enumerate(chunks)]
 
+    def load_dataset(self, folder_path, chunk_size=1024, overlap=256) -> List[Dict]:
+        """
+        Process all PDF files in folder_path, extract, structure, and chunk their content.
+        """
+        pdf_files = [file for file in os.listdir(folder_path) if file.lower().endswith('.pdf')]
+        all_chunks = []
 
-if __name__ == "__main__":
-    loader = PDFLoader()
-    dataset_path = "../Dataset_bis"
-    pkl_folder = os.path.join(dataset_path, "pkl")
-    os.makedirs(pkl_folder, exist_ok=True)  # Create the pkl folder if it doesn't exist
+        for pdf_file in pdf_files:
+            print(colored(f"Processing '{pdf_file}'", "cyan"))
+            doc_type = self.detect_document_type(pdf_file)
+            self.load_and_save_pdf(pdf_file, doc_type, folder_path)
+            pkl_path = os.path.join(folder_path, "pkl", f"{doc_type}.pkl")
 
-    # Process the dataset
-    loader.process_dataset(dataset_path)
+            try:
+                structured_dict = self.partition_and_structure_from_pkl(pkl_path, pdf_file)
+                chunks = self.chunk_text(structured_dict, chunk_size, overlap)
+                all_chunks.extend(chunks)
+                print(colored(f"Successfully processed '{pdf_file}'", "green"))
+            except Exception as e:
+                print(colored(f"Failed to process '{pdf_file}': {e}", "red"))
 
-    # Assuming you want to process all .pkl files generated
-    for pkl_file in os.listdir(pkl_folder):
-        print(colored(f"Processing '{pkl_file}'...", "red"))
-        if pkl_file.endswith(".pkl"):
-            pkl_path = os.path.join(pkl_folder, pkl_file)
-            parsed_content = loader.partition_in_chapter_and_article_from_pkl(pkl_path)
+        return all_chunks
 
-            # Print the chunked text for inspection
-            if "exam" in pkl_file:
-                for paragraph in parsed_content:
-                    chunks = loader.chunk_text(paragraph)
-                    print(
-                        f"Paragraph: {paragraph[:50]}..."
-                    )  # Print the first 50 characters of the paragraph for reference
-                    print(f"Chunks: {chunks}")
-                    print("-" * 80)
-            else:
-                for chapter in parsed_content:
-                    for article in chapter:
-                        chunks = loader.chunk_text(article)
-                        print(
-                            f"Article: {article[:50]}..."
-                        )  # Print the first 50 characters of the article for reference
-                        print(f"Chunks: {chunks}")
-                        print("-" * 80)
+    def is_bold(self, text):
+        # Dummy implementation; replace with your actual logic for bold detection.
+        return text.isupper()

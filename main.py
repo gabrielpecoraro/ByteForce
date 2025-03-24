@@ -25,7 +25,7 @@ print("Start")
 print("Loading PDFs...")
 loader = PDFLoader()
 # Example: Use a smaller chunk size
-chunks = loader.load_dataset(pdf_folder, chunk_size=512, overlap=50)
+chunks = loader.load_dataset(pdf_folder, chunk_size=512, overlap=100)
 print("Number of chunks:", len(chunks))
 
 # Extract text and metadata from each chunk.
@@ -43,7 +43,7 @@ generator = EmbeddingGenerator(api_key=api_key)
 # Generate embeddings for the text chunks.
 # This function now gets a list of strings, not the full dict.
 chunk_vectors = generator.generate_embeddings(text_chunks)
-
+print("Saving embeddings.....")
 # Create a list of tuples pairing each text with its metadata.
 text_with_metadata = list(zip(text_chunks, metadatas))
 

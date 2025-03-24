@@ -1,13 +1,13 @@
 import os
-import sys
-import pickle
 from mistralai import Mistral
 from langchain_community.vectorstores import FAISS
+import math
+import time
 
 # Add the parent directory to the system path to import PDFLoader
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from Loader.load_pdf import PDFLoader
+
+
 
 
 class EmbeddingGenerator:
@@ -15,33 +15,56 @@ class EmbeddingGenerator:
         self.client = Mistral(api_key=api_key)
         self.model_name = model_name
 
-    def generate_embeddings(self, chunks):
-        """
-        Generate embeddings for the given chunks of text using Mistral API.
-        """
-        chunk_texts = [chunk for chunk in chunks]
-        embeddings_batch_response = self.client.embeddings.create(
-            model=self.model_name,
-            inputs=chunk_texts, 
-        )
-        chunk_vectors = embeddings_batch_response["embeddings"]
-        return chunk_vectors, embeddings_batch_response
+    
 
-    def process_pkl_files(self, pkl_files, loader=PDFLoader()):
+   
+
+
+    def generate_embeddings(self, chunks, delay=1, max_retries=3):
         """
-        Process all .pkl files and generate embeddings for each.
+        Generates embeddings for a list of text chunks.
+
+        Args:
+            chunks (list[str]): List of text chunks to embed.
+            max_tokens (int): Maximum tokens allowed for each chunk (unused in this snippet, 
+                              but you might want to use it for truncation or splitting).
+            delay (float): Delay in seconds between retries on rate limit errors.
+            max_retries (int): Maximum number of retries for each chunk when a rate limit is hit.
+
+        Returns:
+            list: A list of embedding responses corresponding to the input text chunks.
         """
-        all_chunks = []
-        for pkl_file in pkl_files:
-            with open(pkl_file, "rb") as f:
-                chapters_with_articles = pickle.load(f)
-            for chapter in chapters_with_articles:
-                for article in chapter:
-                    if isinstance(article, tuple):
-                        article = article[0]  # Extract the string from the tuple
-                    chunks = loader.chunk_text(article)
-                    all_chunks.extend(chunks)
-        return all_chunks
+        chunk_vector = []
+        for chunk in chunks:
+            retries = 0
+            while True:
+                try:
+                    # Call the embedding function from the API client.
+                    response = self.client.embeddings.create(
+                        model=self.model_name,
+                        inputs=chunk,
+                    )
+                    # Append the response (adjust extraction if your API returns a key like "embedding")
+                    chunk_vector.append(response)
+                    break  # Break out of the retry loop once successful.
+                except Exception as e:
+                    # Check if the error message suggests a rate limit (HTTP 429)
+                    if "429" in str(e) or "rate limit" in str(e).lower():
+                        retries += 1
+                        if retries > max_retries:
+                            raise Exception(f"Max retries exceeded for chunk: {chunk}") from e
+                        print(f"Rate limit exceeded. Retrying after {delay} seconds (attempt {retries}/{max_retries})...")
+                        time.sleep(delay)
+                    else:
+                        # Raise any other exceptions that are not rate limit errors.
+                        raise e
+        return chunk_vector
+
+
+
+
+
+
 
     def save_faiss_index(self, chunks, faiss_index_dir):
         """

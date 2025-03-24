@@ -281,7 +281,7 @@ class PDFLoader:
         return chunks
 
 
-if __name__ == "__main__":
+"""if __name__ == "__main__":
     loader = PDFLoader()
     dataset_path = "../Dataset_bis"
     pkl_folder = os.path.join(dataset_path, "pkl")
@@ -314,4 +314,4 @@ if __name__ == "__main__":
                             f"Article: {article[:50]}..."
                         )  # Print the first 50 characters of the article for reference
                         print(f"Chunks: {chunks}")
-                        print("-" * 80)
+                        print("-" * 80)"""

@@ -33,7 +33,8 @@ print("Start")
 
 print("Loading PDFs...")
 loader = PDFLoader()
-chunks=loader.load_dataset(pdf_folder, chunk_size=14000, overlap=1000)
+chunks = loader.load_dataset(pdf_folder, chunk_size=14000, overlap=1000)
+
 print(len(chunks))
 
 

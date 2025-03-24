@@ -33,7 +33,8 @@ print("Start")
 
 print("Loading PDFs...")
 loader = PDFLoader()
-loader.load_and_save_pdf("/Dataset/1-EPC_17th_edition_2020_en.pdf", "epc", pdf_folder)
+chunks=loader.load_dataset(pdf_folder, chunk_size=14000, overlap=1000)
+print(len(chunks))
 
 
 """print("splitting pdfs...")

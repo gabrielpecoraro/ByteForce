@@ -22,10 +22,10 @@ class EmbeddingGenerator:
         chunk_texts = [chunk for chunk in chunks]
         embeddings_batch_response = self.client.embeddings.create(
             model=self.model_name,
-            inputs=chunk_texts,
+            inputs=chunk_texts, 
         )
         chunk_vectors = embeddings_batch_response["embeddings"]
-        return chunk_vectors
+        return chunk_vectors, embeddings_batch_response
 
     def process_pkl_files(self, pkl_files, loader=PDFLoader()):
         """

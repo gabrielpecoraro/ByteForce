@@ -1,6 +1,6 @@
 import os
 import torch
-from langchain.embeddings import HuggingFaceEmbeddings
+from mistralai import Mistral
 from langchain.vectorstores import FAISS
 from pypdf import PdfReader
 
@@ -8,9 +8,10 @@ from pypdf import PdfReader
 # import gensim.corpora as corpora
 from nltk.corpus import stopwords
 from Loader.load_pdf import PDFLoader
+from Loader.embedding import EmbeddingGenerator
 
 # Path to the folder containing your PDFs
-dataset_path = "./Dataset"
+pdf_folder = "./Dataset_bis"
 
 # Check if GPU is available
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
@@ -21,46 +22,44 @@ print(device)
 
 print("Start")
 
-# Initialize PDFLoader and process the dataset
+print("Loading PDFs...")
 loader = PDFLoader()
-chunks = loader.load_dataset(pdf_folder, chunk_size=14000, overlap=1000)
-print(len(chunks))
+# Example: Use a smaller chunk size
+chunks = loader.load_dataset(pdf_folder, chunk_size=512, overlap=50)
+print("Number of chunks:", len(chunks))
 
-# Initialize Mistral client
+# Extract text and metadata from each chunk.
+# Each chunk is a dict with keys "content" and "metadata"
+text_chunks = [chunk["content"] for chunk in chunks]
+metadatas = [chunk["metadata"] for chunk in chunks]
+
+print("Generating embeddings...")
+
 api_key = "CPHwxBTkpGr5svldVyrUr1aL21NgDDj7"
 model_name = "mistral-embed"
 client = Mistral(api_key=api_key)
+generator = EmbeddingGenerator(api_key=api_key)
 
+# Generate embeddings for the text chunks.
+# This function now gets a list of strings, not the full dict.
+chunk_vectors = generator.generate_embeddings(text_chunks)
 
-def generate_embeddings(chunks):
-    """
-    Generate embeddings for the given chunks of text using Mistral API.
-    """
-    chunk_texts = [chunk.page_content for chunk in chunks]
-    embeddings_batch_response = client.embeddings.create(
-        model=model_name,
-        inputs=chunk_texts,
-    )
-    chunk_vectors = embeddings_batch_response["embeddings"]
-    return chunk_vectors, embeddings_batch_response
-
-
-print("Generating embeddings for chunks...")
-chunk_vectors, embeddings = generate_embeddings(chunks)
-text_embeddings = list(zip([chunk.page_content for chunk in chunks], chunk_vectors))
+# Create a list of tuples pairing each text with its metadata.
+text_with_metadata = list(zip(text_chunks, metadatas))
 
 faiss_index_dir = "faiss_index"
 if os.path.exists(faiss_index_dir):
-    # Load the existing FAISS index (embeddings generation is skipped)
+    # Load the existing FAISS index (using the stored embeddings)
     faiss_index = FAISS.load_local(
-        faiss_index_dir, embeddings, allow_dangerous_deserialization=True
+        faiss_index_dir, chunk_vectors, allow_dangerous_deserialization=True
     )
     print("Loaded existing FAISS index from", faiss_index_dir)
 else:
-    # If index doesn't exist, generate embeddings and build the index
-    print("Generating embeddings for chunks...")
-    faiss_index = FAISS.from_embeddings(text_embeddings, embeddings)
+    # Build the FAISS index using the text and metadata paired with embeddings.
+    # The FAISS.from_embeddings method accepts a list of tuples (text, metadata) and their embeddings.
+    faiss_index = FAISS.from_embeddings(text_with_metadata, chunk_vectors)
     faiss_index.save_local(faiss_index_dir)
     print("FAISS index built and saved to", faiss_index_dir)
 
 print("Finished")
+

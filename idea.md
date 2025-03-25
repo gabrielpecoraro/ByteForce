@@ -10,15 +10,16 @@ Welcome to the **Ideas File**! This document serves as a central place for contr
 
 ---
 
-## Proposed Ideas Templates [Please try to Standardize so it's not messy]
-### 1. [Example Idea Title]
-**Description:** A brief explanation of the idea and how it improves the project.
-**Priority:** [High/Medium/Low]
+## Proposed Ideas Templates 
+### 1. Problems
+**Description:** The current problems we are facing
+-case_law and guidlines not opening yet, embedding and metadata saving in faiss, using a local model
+**Priority:** [High]
 **Assigned To (Optional):** @username
 
-### 2. [Another Idea]
-**Description:** Explain what this idea would add or improve.
-**Priority:** [High/Medium/Low]
+### 2. Next work
+**Description:** RAG and llm: prompting methods
+**Priority:** [High]
 **Assigned To (Optional):** @username
 
 ---

@@ -1,69 +1,89 @@
-import os
-import torch
-import faiss
-from transformers import pipeline
-from langchain.vectorstores import FAISS
-from langchain.chains import RetrievalQA, LLMChain
+# rag.py
+
+from langchain_community.vectorstores import FAISS
+from sentence_transformers import SentenceTransformer
 from langchain.prompts import PromptTemplate
-from langchain.docstore import InMemoryDocstore
-from langchain.llms import HuggingFacePipeline
-from langchain_mistralai import MistralAIEmbeddings
+from langchain.chains import LLMChain
+from langchain_community.llms import HuggingFaceHub
 
-# Path to the folder containing the FAISS index
-faiss_index_dir = "../Dataset/faiss_index"
+class RAG:
+    def __init__(self, embedding_model_name, faiss_index_dir, llm_model_name, huggingfacehub_api_token):
+        # Initialize embedding model
+        self.embedder = SentenceTransformer(embedding_model_name)
 
-# Check if GPU is available
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-print(device)
+        # Load FAISS index
+        self.vectorstore = FAISS.load_local(
+            faiss_index_dir, self.embedder.encode, allow_dangerous_deserialization=True
+        )
 
-print("Start")
+        # Initialize the LLM
+        self.llm = HuggingFaceHub(
+            huggingfacehub_api_token=huggingfacehub_api_token,
+            repo_id=llm_model_name,
+            model_kwargs={"temperature": 0.2, "max_length": 1024}
+        )
 
-# Load the FAISS index
-index = faiss.read_index(os.path.join(faiss_index_dir, "index.faiss"))
+        # Few-shot examples for better prompting
+        few_shot_examples = (
+            "Context:\nA European patent application can be transferred from one company to another.\n\n"
+            "Question: Can a European patent application be assigned to another company?\n"
+            "Answer: Yes, a European patent application can be transferred to another company.\n"
+            "---\n"
+            "Context:\nSilver ions are known for their antibacterial properties and are used in textiles.\n\n"
+            "Question: Why are silver ions used in yoga mats?\n"
+            "Answer: Silver ions are used in yoga mats to reduce the growth of bacteria due to their antibacterial properties.\n"
+            "---"
+        )
 
-# Initialize the Mistral embeddings
-embedding_model = MistralAIEmbeddings(model="mistral-embed")
+        # Define enhanced prompt template with few-shot examples
+        self.prompt_template = PromptTemplate(
+            template=(
+                "You are an expert legal assistant. Use the provided context to answer the user's question."
+                " If the answer cannot be found in the context, say 'The provided context does not contain enough information.'\n\n"
+                f"{few_shot_examples}\n"
+                "Context:\n{context}\n\n"
+                "Question: {question}\n\n"
+                "Answer:"
+            ),
+            input_variables=["context", "question"]
+        )
 
-# Initialize the FAISS vector store
-docstore = InMemoryDocstore({})
-index_to_docstore_id = {i: str(i) for i in range(index.ntotal)}
-faiss_index = FAISS(
-    embedding_function=embedding_model.embed_documents,
-    docstore=docstore,
-    index=index,
-    index_to_docstore_id=index_to_docstore_id,
-)
+        # Define LLM chain
+        self.chain = LLMChain(llm=self.llm, prompt=self.prompt_template)
 
-# Initialize the local language model
-qa_pipeline = pipeline(
-    "text-generation", model="distilgpt2", device=0 if torch.cuda.is_available() else -1
-)
-llm = HuggingFacePipeline(pipeline=qa_pipeline)
+    def query(self, question, top_k=5):
+        # Generate embedding for question
+        question_embedding = self.embedder.encode([question])
 
-# Create the LLMChain
-prompt_template = PromptTemplate(
-    template="{context}\n\nQuestion: {question}\nAnswer:",
-    input_variables=["context", "question"],
-)
-llm_chain = LLMChain(llm=llm, prompt=prompt_template)
+        # Retrieve relevant context
+        docs_and_scores = self.vectorstore.similarity_search_by_vector(question_embedding[0], k=top_k)
+        context = "\n---\n".join([doc.page_content for doc in docs_and_scores])
 
-# Create the RetrievalQA chain
-retriever = faiss_index.as_retriever()
-qa_chain = RetrievalQA(combine_documents_chain=llm_chain, retriever=retriever)
+        # Generate response from LLM
+        response = self.chain.run({"context": context, "question": question})
 
-
-# Define a function to interact with the RAG system
-def ask_question(query):
-    response = qa_chain.run(query)
-    return response
+        return response
 
 
-# Example interaction
 if __name__ == "__main__":
-    while True:
-        query = input("Enter your question: ")
-        if query.lower() in ["exit", "quit"]:
-            break
-        response = ask_question(query)
-        print(f"Response: {response}")
+    import os
+
+    # Setup
+    EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    FAISS_INDEX_DIR = "path/to/your/faiss_index_dir"
+    LLM_MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.2"
+    HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+
+    # Initialize RAG
+    rag_system = RAG(
+        embedding_model_name=EMBEDDING_MODEL,
+        faiss_index_dir=FAISS_INDEX_DIR,
+        llm_model_name=LLM_MODEL_NAME,
+        huggingfacehub_api_token=HUGGINGFACEHUB_API_TOKEN
+    )
+
+    # Get user input and query
+    question = input("Enter your legal question: ")
+    answer = rag_system.query(question)
+
+    print("\nGenerated Answer:\n", answer)

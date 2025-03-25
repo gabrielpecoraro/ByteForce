@@ -1,5 +1,3 @@
-# rag.py
-
 from langchain_community.vectorstores import FAISS
 from sentence_transformers import SentenceTransformer
 from langchain.prompts import PromptTemplate

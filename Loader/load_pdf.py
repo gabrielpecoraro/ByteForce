@@ -313,11 +313,11 @@ class PDFLoader:
                         or re.match(r"^Chapter\s+[IVXLCDM]+", line_text)
                     ):
                         if current_chapter:
-                            chapters.append(current_chapter)
+                            chapters.append("\n".join(current_chapter))
                             current_chapter = []
                     current_chapter.append(line_text)
                 if current_chapter:
-                    chapters.append(current_chapter)
+                    chapters.append("\n".join(current_chapter))
             structured_content = chapters
 
         elif doc_type == "case_law":
@@ -329,11 +329,11 @@ class PDFLoader:
                 for line_text in lines:
                     if re.match(r"^\d+(\.\d+)*\s", line_text) or re.match(r"^[a-zA-Z]\)\s", line_text):
                         if current_chapter:
-                            chapters.append(current_chapter)
+                            chapters.append("\n".join(current_chapter))
                             current_chapter = []
                     current_chapter.append(line_text)
                 if current_chapter:
-                    chapters.append(current_chapter)
+                    chapters.append("\n".join(current_chapter))
             structured_content = chapters
 
         elif doc_type in ["questions", "answers"]:
@@ -422,10 +422,10 @@ class PDFLoader:
             sections = [article for chapter in content for article in chapter]
 
         elif doc_type in ["pct", "guidelines", "case_law"]:
-            sections = content
+            sections = [article for article in content]
 
         elif doc_type in ["questions", "answers"]:
-            sections = content
+            sections = [article for article in content]
 
         else:
             sections = [" ".join(item) if isinstance(item, list) else item for item in content]
@@ -504,8 +504,7 @@ class PDFLoader:
         elif doc_type == "guidelines":
             # Guidelines: Chunk by chapter
             for chapter in content:
-                chapter_text = " ".join(chapter)
-                words = chapter_text.split()
+                words = chapter.split()
                 for i in range(0, len(words), chunk_size - overlap):
                     chunk = " ".join(words[i:i + chunk_size])
                     chunks.append(chunk)
@@ -513,8 +512,7 @@ class PDFLoader:
         elif doc_type == "case_law":
             # Case law: Chunk by identified chapters
             for chapter in content:
-                chapter_text = " ".join(chapter)
-                words = chapter_text.split()
+                words = chapter.split()
                 for i in range(0, len(words), chunk_size - overlap):
                     chunk = " ".join(words[i:i + chunk_size])
                     chunks.append(chunk)
@@ -562,6 +560,7 @@ class PDFLoader:
 
             try:
                 structured_dict = self.partition_and_structure_from_pkl(pkl_path, pdf_file)
+                print(colored(f"Chunking '{pdf_file}'", "magenta"))
                 #chunks = self.chunk_text(structured_dict, chunk_size, overlap)
                 chunks=self.chunk_text_adapt(structured_dict, min_chunk_size=50, max_chunk_size=512, overlap=50)
                 all_chunks.extend(chunks)

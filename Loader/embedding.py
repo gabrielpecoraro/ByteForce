@@ -1,93 +1,78 @@
 import os
 from mistralai import Mistral
 from langchain_community.vectorstores import FAISS
-import math
 import time
+from tqdm import tqdm  # Make sure to import tqdm at the top
+
 
 # Add the parent directory to the system path to import PDFLoader
-
-
-
-
+from mistralai import Mistral
+from sentence_transformers import SentenceTransformer
 
 class EmbeddingGenerator:
-    def __init__(self, api_key, model_name="mistral-embed"):
-        self.client = Mistral(api_key=api_key)
+    def __init__(self, api_key=None, model_name="mistral"):
         self.model_name = model_name
+        
+        if "mistral" in model_name.lower():
+            if api_key is None:
+                raise ValueError("API key must be provided for Mistral models.")
+            self.client = Mistral(api_key=api_key)
+            self.model_type = "mistral"
+        else:
+            # Default local model (sentence-transformers)
+            self.client = SentenceTransformer(model_name)
+            self.model_type = "local"
 
-    
+    def generate_embeddings(self, chunks, delay=1, max_retries=3, batch_size=32):
+        chunk_vectors = []
 
-   
+        if self.model_type == "mistral":
+            for chunk in tqdm(chunks, desc="Generating Mistral Embeddings"):
+                retries = 0
+                while True:
+                    try:
+                        response = self.client.embeddings.create(
+                            model=self.model_name,
+                            inputs=chunk,
+                        )
+                        chunk_vectors.append(response.data[0].embedding)
+                        break
+                    except Exception as e:
+                        if "429" in str(e) or "rate limit" in str(e).lower():
+                            retries += 1
+                            if retries > max_retries:
+                                raise Exception(f"Max retries exceeded for chunk: {chunk[:30]}") from e
+                            time.sleep(delay)
+                        else:
+                            raise e
+
+        elif self.model_type == "local":
+            for i in tqdm(range(0, len(chunks), batch_size), desc="Generating embeddings"):
+                batch = chunks[i:i + batch_size]
+                embeddings = self.client.encode(batch)
+                chunk_vectors.extend(embeddings)
+
+        return chunk_vectors
 
 
-    def generate_embeddings(self, chunks, delay=1, max_retries=3):
+
+
+
+
+
+    def save_faiss_index(self, texts, metadatas, faiss_index_dir):
         """
-        Generates embeddings for a list of text chunks.
-
-        Args:
-            chunks (list[str]): List of text chunks to embed.
-            max_tokens (int): Maximum tokens allowed for each chunk (unused in this snippet, 
-                              but you might want to use it for truncation or splitting).
-            delay (float): Delay in seconds between retries on rate limit errors.
-            max_retries (int): Maximum number of retries for each chunk when a rate limit is hit.
-
-        Returns:
-            list: A list of embedding responses corresponding to the input text chunks.
-        """
-        chunk_vector = []
-        for chunk in chunks:
-            retries = 0
-            while True:
-                try:
-                    # Call the embedding function from the API client.
-                    response = self.client.embeddings.create(
-                        model=self.model_name,
-                        inputs=chunk,
-                    )
-                    # Append the response (adjust extraction if your API returns a key like "embedding")
-                    chunk_vector.append(response)
-                    break  # Break out of the retry loop once successful.
-                except Exception as e:
-                    # Check if the error message suggests a rate limit (HTTP 429)
-                    if "429" in str(e) or "rate limit" in str(e).lower():
-                        retries += 1
-                        if retries > max_retries:
-                            raise Exception(f"Max retries exceeded for chunk: {chunk}") from e
-                        print(f"Rate limit exceeded. Retrying after {delay} seconds (attempt {retries}/{max_retries})...")
-                        time.sleep(delay)
-                    else:
-                        # Raise any other exceptions that are not rate limit errors.
-                        raise e
-        return chunk_vector
-
-
-
-
-
-
-
-    def save_faiss_index(self, chunks, faiss_index_dir):
-        """
-        Save the FAISS index to a directory.
+        Generate embeddings and save them into a FAISS index along with metadata.
         """
         if os.path.exists(faiss_index_dir):
-            # Load the existing FAISS index (embeddings generation is skipped)
             faiss_index = FAISS.load_local(
-                faiss_index_dir, self.embeddings, allow_dangerous_deserialization=True
+                faiss_index_dir, self.client.encode, allow_dangerous_deserialization=True
             )
             print("Loaded existing FAISS index from", faiss_index_dir)
         else:
-            # If index doesn't exist, generate embeddings and build the index
-            print("Generating embeddings for chunks...")
-            chunk_vectors = self.generate_embeddings(chunks)
-            text_embeddings = list(zip(chunks, chunk_vectors))
-
-            # Debug print to check if text_embeddings is empty
-            print(f"Number of text embeddings: {len(text_embeddings)}")
-
-            # Note: The following line computes embeddings and builds the FAISS index
-            faiss_index = FAISS.from_embeddings(text_embeddings, self.embeddings)
-
+            embeddings = self.generate_embeddings(texts)
+            text_with_metadata = list(zip(texts, metadatas))
+            faiss_index = FAISS.from_embeddings(text_with_metadata, embeddings)
             faiss_index.save_local(faiss_index_dir)
             print("FAISS index built and saved to", faiss_index_dir)
 

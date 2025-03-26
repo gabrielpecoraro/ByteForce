@@ -28,7 +28,7 @@ metadatas = [chunk["metadata"] for chunk in chunks]
 faiss_index_dir = "faiss_index"
 
 
-api_key = "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"
+# api_key = "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"
 # model_name = "mistral-embed"
 model_name = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 llm_name = "mistralai/Mistral-7B-Instruct-v0.2"

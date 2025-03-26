@@ -6,6 +6,7 @@ from langchain.embeddings import HuggingFaceEmbeddings
 from sentence_transformers import SentenceTransformer
 from docx import Document
 import random
+from huggingface_hub import InferenceClient
 
 
 def extract_qa_from_docx(path):
@@ -62,59 +63,53 @@ class RAG:
         huggingfacehub_api_token,
     ):
         # Initialize embedding model
-        self.embedder = SentenceTransformer(embedding_model_name)
+        self.embedder = HuggingFaceEmbeddings(model_name=embedding_model_name)
 
         # Load FAISS index
         self.vectorstore = FAISS.load_local(
-            faiss_index_dir,
-            embeddings=self.embedder,
-            allow_dangerous_deserialization=True,
+            faiss_index_dir, self.embedder, allow_dangerous_deserialization=True
         )
 
-        # Initialize the LLM
-        self.llm = HuggingFaceHub(
-            huggingfacehub_api_token=huggingfacehub_api_token,
-            repo_id=llm_model_name,
-            model_kwargs={"temperature": 0.2, "max_length": 1024},
+        # Initialize Inference Client
+        self.client = InferenceClient(
+            model=llm_model_name, token=huggingfacehub_api_token
         )
 
-        # Load and format few-shot examples
-        qa_pairs = extract_qa_from_docx("Questions Sup OEB.docx")
-        few_shot_examples = format_few_shots(qa_pairs, max_examples=8)
-        self.test_questions = get_random_test_questions(
-            qa_pairs, n=5, seed=19
-        )  # repeatable sample
+        # Initialize test questions
+        self.test_questions = [
+            [
+                "What are the requirements for patentability under EPC Article 32?",
+            ]
+        ]
 
-        # Define enhanced prompt template with few-shot examples
+        # Define prompt template
         self.prompt_template = PromptTemplate(
             template=(
                 "You are an expert legal assistant trained to answer questions using legal context only.\n\n"
-                "For each question, you are given a context extracted from legal sources. Answer only if the answer is explicitly present in the context.\n\n"
-                "- Do not make up answers.\n"
-                '- If the context is unclear or missing, say: "The provided context does not contain enough information."\n'
-                "- Format your answer clearly and concisely, like in the examples.\n\n"
-                f"{few_shot_examples}\n"
-                "Context:\n{{context}}\n\n"
-                "Question: {{question}}\n\n"
+                "Context:\n{context}\n\n"
+                "Question: {question}\n\n"
                 "Answer:"
             ),
             input_variables=["context", "question"],
         )
 
-        # Define LLM chain
-        self.chain = LLMChain(llm=self.llm, prompt=self.prompt_template)
-
     def query(self, question, top_k=5):
-        # Generate embedding for question
-        question_embedding = self.embedder.encode([question])
+        # Get relevant documents
+        docs = self.vectorstore.similarity_search(question, k=top_k)
+        context = "\n\n".join([doc.page_content for doc in docs])
 
-        # Retrieve relevant context
-        docs_and_scores = self.vectorstore.similarity_search_by_vector(
-            question_embedding[0], k=top_k
+        # Format prompt
+        formatted_prompt = self.prompt_template.format(
+            context=context, question=question
         )
-        context = "\n---\n".join([doc.page_content for doc in docs_and_scores])
 
-        # Generate response from LLM
-        response = self.chain.run({"context": context, "question": question})
+        # Generate response using the newer API
+        response = self.client.text_generation(
+            formatted_prompt,
+            max_new_tokens=512,
+            temperature=0.5,
+            do_sample=True,
+            return_full_text=False,
+        )
 
         return response

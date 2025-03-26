@@ -4,7 +4,7 @@ from Loader.embedding import EmbeddingGenerator
 
 
 # Path to the folder containing your PDFs
-pdf_folder = "./Dataset_bis"
+pdf_folder = "./DatasetFinal"
 
 # Check if GPU is available
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
@@ -33,8 +33,7 @@ api_key = "CPHwxBTkpGr5svldVyrUr1aL21NgDDj7"
 model_name = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
 generator = EmbeddingGenerator(model_name=model_name)
-
-
+print("Ok")
 
 # Save to FAISS using the real model
 vectorstore = generator.save_embeddings_to_faiss(
@@ -42,4 +41,3 @@ vectorstore = generator.save_embeddings_to_faiss(
     save_path="faiss_index",
     metadata_list=metadatas,
 )
-

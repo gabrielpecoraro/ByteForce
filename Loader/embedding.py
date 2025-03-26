@@ -12,7 +12,7 @@
 # class EmbeddingGenerator:
 #     def __init__(self, api_key=None, model_name="mistral"):
 #         self.model_name = model_name
-        
+
 #         if "mistral" in model_name.lower():
 #             if api_key is None:
 #                 raise ValueError("API key must be provided for Mistral models.")
@@ -53,11 +53,6 @@
 #                 chunk_vectors.extend(embeddings)
 
 #         return chunk_vectors
-
-
-
-
-
 
 
 #     def save_faiss_index(self, texts, metadatas, faiss_index_dir):
@@ -118,6 +113,7 @@ from langchain.embeddings.base import Embeddings
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.docstore.document import Document
 
+
 class EmbeddingGenerator:
     def __init__(self, api_key=None, model_name="mistral"):
         self.model_name = model_name
@@ -130,7 +126,7 @@ class EmbeddingGenerator:
         else:
             self.client = SentenceTransformer(model_name)
             self.model_type = "local"
-    
+
     def get_langchain_embedding_model(self):
         """Return a LangChain-compatible embedding model (for FAISS and RAG use)."""
         if self.model_type == "mistral":
@@ -156,28 +152,31 @@ class EmbeddingGenerator:
                         if "429" in str(e) or "rate limit" in str(e).lower():
                             retries += 1
                             if retries > max_retries:
-                                raise Exception(f"Max retries exceeded for chunk: {chunk[:30]}") from e
+                                raise Exception(
+                                    f"Max retries exceeded for chunk: {chunk[:30]}"
+                                ) from e
                             time.sleep(delay)
                         else:
                             raise e
 
         elif self.model_type == "local":
-            for i in tqdm(range(0, len(chunks), batch_size), desc="Generating embeddings"):
-                batch = chunks[i:i + batch_size]
+            print("Generating embeddings...")
+            for i in tqdm(
+                range(0, len(chunks), batch_size), desc="Generating embeddings"
+            ):
+                batch = chunks[i : i + batch_size]
                 embeddings = self.client.encode(batch)
                 chunk_vectors.extend(embeddings)
 
         return chunk_vectors
 
-    def save_embeddings_to_faiss(self,chunks, save_path, metadata_list=None):
-        
-
+    def save_embeddings_to_faiss(self, chunks, save_path, metadata_list=None):
         if os.path.exists(save_path):
             print(f"FAISS index already exists at {save_path}. Loading...")
             vectorstore = FAISS.load_local(
                 folder_path=save_path,
                 embeddings=self.get_langchain_embedding_model(),
-                allow_dangerous_deserialization=True
+                allow_dangerous_deserialization=True,
             )
             return vectorstore
 
@@ -185,17 +184,19 @@ class EmbeddingGenerator:
 
         if metadata_list is None:
             metadata_list = [{} for _ in chunks]
-
-        documents = [Document(page_content=chunk, metadata=meta) for chunk, meta in zip(chunks, metadata_list)]
-
-        vectorstore = FAISS.from_documents(documents, embedding=self.get_langchain_embedding_model())
+        print("1")
+        documents = [
+            Document(page_content=chunk, metadata=meta)
+            for chunk, meta in zip(chunks, metadata_list)
+        ]
+        print("2")
+        vectorstore = FAISS.from_documents(
+            documents, embedding=self.get_langchain_embedding_model()
+        )
         vectorstore.save_local(save_path)
         print(f"Saved FAISS index to {save_path}")
 
         return vectorstore
-    
-    
-
 
 
 class MistralLangChainEmbedding(Embeddings):
@@ -205,9 +206,15 @@ class MistralLangChainEmbedding(Embeddings):
 
     def embed_documents(self, texts):
         return [
-            self.client.embeddings.create(model=self.model_name, inputs=text).data[0].embedding
+            self.client.embeddings.create(model=self.model_name, inputs=text)
+            .data[0]
+            .embedding
             for text in texts
         ]
 
     def embed_query(self, text):
-        return self.client.embeddings.create(model=self.model_name, inputs=text).data[0].embedding
+        return (
+            self.client.embeddings.create(model=self.model_name, inputs=text)
+            .data[0]
+            .embedding
+        )

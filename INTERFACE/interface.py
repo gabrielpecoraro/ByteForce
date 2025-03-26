@@ -1,14 +1,35 @@
 import streamlit as st
+import streamlit.components.v1 as components
+import os
 
 
 class RAGInterface:
     def __init__(self):
-        st.set_page_config(page_title="RAG Interface", layout="wide")
+        st.set_page_config(
+            page_title="LegalRAG Assistant",
+            layout="wide",
+            initial_sidebar_state="collapsed",
+        )
 
-        # Load and apply custom CSS
-        with open("interface.css") as f:
-            css = f.read()
-        st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+        # Get the directory of the current file
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+
+        # Load and inject CSS
+        css_path = os.path.join(current_dir, "interface.css")
+        with open(css_path, "r") as css_file:
+            css = css_file.read()
+            st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+
+        # Load and inject JavaScript
+        js_path = os.path.join(current_dir, "interface.js")
+        with open(js_path, "r") as js_file:
+            js = js_file.read()
+            components.html(
+                f"""
+                <script>{js}</script>
+                """,
+                height=0,
+            )
 
         self.initialize_session_state()
 
@@ -73,34 +94,44 @@ This information comes from the {source} documentation."""
         st.title("💬 LegalRAG: Patent Document Assistant")
         st.markdown("---")
 
-        # Load and inject JavaScript from file
-        with open("interface.js", "r") as file:
-            js_code = file.read()
-            st.components.v1.html(f"<script>{js_code}</script>", height=0)
+        # Create a container for chat history at the top
+        chat_container = st.container()
 
-        # Create the input text area with key for state management
-        user_input = st.text_area(
-            "Enter your question about patents (Press Enter to submit, Shift+Enter for new line):",
-            height=100,
-            key="input",
-        )
+        # Create input section at the bottom
+        with st.container():
+            # Initialize the input value from session state
+            if "user_input" not in st.session_state:
+                st.session_state.user_input = ""
 
-        # Create the submit button with loading state
-        if st.button("Submit", type="primary"):
-            if user_input and len(user_input.strip()) > 0:
-                with st.container():
-                    st.markdown(
-                        "<div class='thinking'>Thinking</div>", unsafe_allow_html=True
-                    )
-                    response = self.run_rag(user_input)
-                    st.session_state.chat_history.append(
-                        {"user": user_input, "assistant": response}
-                    )
-                    st.session_state.input = ""
+            user_input = st.text_area(
+                "Enter your question about patents (Press Enter to submit, Shift+Enter for new line):",
+                value=st.session_state.user_input,
+                height=100,
+                key="input_area",
+            )
+
+            col1, col2 = st.columns([1, 5])
+
+            with col1:
+                if st.button("Submit", type="primary"):
+                    if user_input and len(user_input.strip()) > 0:
+                        with st.spinner("Thinking..."):
+                            response = self.run_rag(user_input)
+                            st.session_state.chat_history.append(
+                                {"user": user_input, "assistant": response}
+                            )
+                            # Clear input by updating session state
+                            st.session_state.user_input = ""
+                            st.rerun()
+
+            with col2:
+                if st.button("Clear History", type="secondary"):
+                    st.session_state.chat_history = []
                     st.rerun()
 
-        # Display chat history
-        self.display_chat_history()
+        # Display chat history in the container
+        with chat_container:
+            self.display_chat_history()
 
 
 if __name__ == "__main__":

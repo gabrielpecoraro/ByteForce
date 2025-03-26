@@ -1,0 +1,11 @@
+# Ignore all .pkl files
+*.pkl
+
+# Ignore the faiss_index folder
+faiss_index/
+
+# Ignore pycache in Loader
+Loader/__pycache__/
+
+# Ignore all pdf files 
+*.pdf

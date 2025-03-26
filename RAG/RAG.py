@@ -2,11 +2,11 @@ from langchain_community.vectorstores import FAISS
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from langchain_community.llms import HuggingFaceHub
-from langchain.embeddings import HuggingFaceEmbeddings
-from sentence_transformers import SentenceTransformer
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from docx import Document
 import random
 from huggingface_hub import InferenceClient
+from pathlib import Path
 
 
 def extract_qa_from_docx(path):
@@ -20,17 +20,16 @@ def extract_qa_from_docx(path):
         text = para.text.strip()
 
         if text.lower().startswith("question"):
-            # Start of a new question
             in_question = True
             question = ""
             answer = ""
         elif text.lower().startswith("answer"):
-            in_question = False  # Done collecting question
+            in_question = False
         elif text.lower().startswith("the correct answer is"):
             answer = text
             qa_pairs.append((question.strip(), answer.strip()))
         elif in_question:
-            question += " " + text  # Append to current question
+            question += " " + text
 
     return qa_pairs
 
@@ -48,8 +47,6 @@ def format_few_shots(qa_pairs, max_examples=3):
 
 
 def get_random_test_questions(qa_pairs, n=5, seed=19):
-    import random
-
     random.seed(seed)
     return [q for q, _ in random.sample(qa_pairs, min(n, len(qa_pairs)))]
 
@@ -61,49 +58,46 @@ class RAG:
         faiss_index_dir,
         llm_model_name,
         huggingfacehub_api_token,
+        few_shot_docx_path="Questions Sup OEB.docx",
+        max_few_shot_examples=5,
     ):
-        # Initialize embedding model
         self.embedder = HuggingFaceEmbeddings(model_name=embedding_model_name)
-
-        # Load FAISS index
         self.vectorstore = FAISS.load_local(
             faiss_index_dir, self.embedder, allow_dangerous_deserialization=True
         )
-
-        # Initialize Inference Client
         self.client = InferenceClient(
             model=llm_model_name, token=huggingfacehub_api_token
         )
 
-        # Initialize test questions
+        self.few_shot_prompt = ""
+        if few_shot_docx_path and Path(few_shot_docx_path).exists():
+            qa_pairs = extract_qa_from_docx(few_shot_docx_path)
+            self.few_shot_prompt = format_few_shots(qa_pairs, max_examples=max_few_shot_examples)
         self.test_questions = [
-            [
-                "What are the requirements for patentability under EPC Article 32?",
+                "What are the requirements for patentability under EPC Article 52?"
             ]
-        ]
 
-        # Define prompt template
         self.prompt_template = PromptTemplate(
             template=(
+                "{few_shots}"
                 "You are an expert legal assistant trained to answer questions using legal context only.\n\n"
                 "Context:\n{context}\n\n"
                 "Question: {question}\n\n"
                 "Answer:"
             ),
-            input_variables=["context", "question"],
+            input_variables=["few_shots", "context", "question"],
         )
 
     def query(self, question, top_k=5):
-        # Get relevant documents
         docs = self.vectorstore.similarity_search(question, k=top_k)
         context = "\n\n".join([doc.page_content for doc in docs])
 
-        # Format prompt
         formatted_prompt = self.prompt_template.format(
-            context=context, question=question
+            few_shots=self.few_shot_prompt,
+            context=context,
+            question=question,
         )
 
-        # Generate response using the newer API
         response = self.client.text_generation(
             formatted_prompt,
             max_new_tokens=512,

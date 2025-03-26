@@ -1,7 +1,7 @@
 import os
 import pickle
 import fitz  # PyMuPDF
-from langchain.schema import Document
+from langchain_core.documents import Document
 import re
 from termcolor import colored
 from typing import List, Dict

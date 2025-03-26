@@ -1,4 +1,4 @@
-import torch
+#import torch
 from Loader.load_pdf import PDFLoader
 from Loader.embedding import EmbeddingGenerator
 from RAG.RAG import RAG
@@ -8,11 +8,11 @@ from RAG.RAG import RAG
 pdf_folder = "./Dataset_bis"
 
 # Check if GPU is available
-device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+#device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
 
 # Specify the path to your PDF file
-print(device)
+#print(device)
 
 print("Start")
 
@@ -28,7 +28,7 @@ metadatas = [chunk["metadata"] for chunk in chunks]
 faiss_index_dir = "faiss_index"
 
 
-api_key = "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"
+api_key = "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"
 # model_name = "mistral-embed"
 model_name = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 llm_name = "mistralai/Mistral-7B-Instruct-v0.2"

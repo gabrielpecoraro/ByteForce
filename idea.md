@@ -13,12 +13,12 @@ Welcome to the **Ideas File**! This document serves as a central place for contr
 ## Proposed Ideas Templates 
 ### 1. Problems
 **Description:** The current problems we are facing
-- using a local model and which one- bar not showing - using the same model directly from embedding to embed
+- using a local model and which one- bar not showing - using the same model directly from embedding to embed- solving the effeciency and integrate streamlit
 **Priority:** [High]
 **Assigned To (Optional):** @username
 
-### 2. Next work
-**Description:** RAG and llm: prompting methods
+### 2. Other current problems
+**Description:** RAG and llm: before locally running need requirments and downlading /installing/ for foot print use the valuations methods+ efficiency(latency bleu score ..) sufficiency trade off (justify what we do is good for envirm=nment) explore quantization
 **Priority:** [High]
 **Assigned To (Optional):** @username
 

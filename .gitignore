@@ -9,3 +9,5 @@ Loader/__pycache__/
 
 # Ignore all pdf files 
 *.pdf
+
+.venv/

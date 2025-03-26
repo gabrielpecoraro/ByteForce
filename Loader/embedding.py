@@ -1,33 +1,33 @@
 import os
 import time
 from tqdm import tqdm
+
 from langchain_community.vectorstores import FAISS
-from langchain.embeddings.base import Embeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_core.embeddings import Embeddings
+from langchain_core.documents import Document
 from mistralai import Mistral
-from sentence_transformers import SentenceTransformer
-from langchain.embeddings.base import Embeddings
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.docstore.document import Document
+
+
+from langchain_core.embeddings import Embeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
 class EmbeddingGenerator:
-    def __init__(self, api_key=None, model_name="mistral"):
+    def __init__(self, model_name="sentence-transformers/all-MiniLM-L6-v2", api_key=None):
         self.model_name = model_name
 
         if "mistral" in model_name.lower():
             if api_key is None:
                 raise ValueError("API key must be provided for Mistral models.")
             self.client = Mistral(api_key=api_key)
+            self.embedder = MistralLangChainEmbedding(self.client, self.model_name)
             self.model_type = "mistral"
         else:
-            self.client = SentenceTransformer(model_name)
+            self.embedder = HuggingFaceEmbeddings(model_name=self.model_name)
             self.model_type = "local"
     
     def get_langchain_embedding_model(self):
-        """Return a LangChain-compatible embedding model (for FAISS and RAG use)."""
-        if self.model_type == "mistral":
-            return MistralLangChainEmbedding(self.client, self.model_name)
-        else:
-            return HuggingFaceEmbeddings(model_name=self.model_name)
+        return self.embedder
 
     def generate_embeddings(self, chunks, delay=1, max_retries=3, batch_size=32):
         chunk_vectors = []

@@ -1,0 +1,33 @@
+# Core ML + Vector Search
+
+sentence-transformers
+faiss-cpu
+scikit-learn
+numpy
+
+
+
+# LangChain components
+langchain
+langchain-community
+
+
+# Hugging Face + Mistral API
+huggingface_hub
+mistralai
+
+# PDF parsing
+PyMuPDF
+
+# Frontend
+streamlit
+
+# Frontend styling (already included in Python)
+requests
+
+# Document parsing
+python-docx
+
+# Utils
+tqdm
+termcolor

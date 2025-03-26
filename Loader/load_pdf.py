@@ -1,7 +1,6 @@
 import os
 import pickle
 import fitz  # PyMuPDF
-import pdfplumber
 from langchain.schema import Document
 import re
 from termcolor import colored

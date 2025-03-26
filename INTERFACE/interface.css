@@ -1,0 +1,78 @@
+/* Main text color and font */
+.stApp {
+    color: #000000;
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Chat container styling */
+.stMarkdown {
+    background-color: #ffffff;
+    border-radius: 8px;
+    margin: 0.5rem 0;
+    padding: 1rem;
+}
+
+/* User message styling */
+.stMarkdown p:has(strong:contains("User")) {
+    background-color: #f7f7f8;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    color: #000000;
+}
+
+/* Assistant message styling */
+.stMarkdown p:has(strong:contains("Assistant")) {
+    background-color: #ffffff;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #e5e5e5;
+    margin-bottom: 1rem;
+    color: #000000;
+}
+
+/* Loading animation */
+@keyframes thinking {
+    0% { content: "."; }
+    33% { content: ".."; }
+    66% { content: "..."; }
+}
+
+.thinking::after {
+    content: "";
+    animation: thinking 1.5s infinite;
+    display: inline-block;
+    width: 20px;
+}
+
+/* Input styling */
+.stTextArea textarea {
+    color: #000000;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 16px;
+}
+
+/* Button styling */
+.stButton button {
+    background-color: #0066cc;
+    color: white;
+    border-radius: 8px;
+    padding: 0.5rem 1.5rem;
+    font-weight: 500;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.stButton button:hover {
+    background-color: #0052a3;
+    transform: translateY(-1px);
+}
+
+/* Divider styling */
+hr {
+    border: none;
+    border-top: 1px solid #e5e5e5;
+    margin: 1.5rem 0;
+}

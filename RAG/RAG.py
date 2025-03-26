@@ -8,8 +8,6 @@ from docx import Document
 import random
 
 
-
-
 def extract_qa_from_docx(path):
     doc = Document(path)
     qa_pairs = []
@@ -36,7 +34,6 @@ def extract_qa_from_docx(path):
     return qa_pairs
 
 
-
 def format_few_shots(qa_pairs, max_examples=3):
     prompt = ""
     for q, a in qa_pairs[:max_examples]:
@@ -51,9 +48,9 @@ def format_few_shots(qa_pairs, max_examples=3):
 
 def get_random_test_questions(qa_pairs, n=5, seed=19):
     import random
+
     random.seed(seed)
     return [q for q, _ in random.sample(qa_pairs, min(n, len(qa_pairs)))]
-
 
 
 class RAG:

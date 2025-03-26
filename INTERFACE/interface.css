@@ -1,0 +1,166 @@
+/* Main text color and font */
+.stApp {
+    color: #000000;
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+    transition: background-color 0.3s ease;
+}
+
+/* Chat container styling */
+.stMarkdown {
+    background-color: #ffffff;
+    border-radius: 8px;
+    margin: 0.5rem 0;
+    padding: 1rem;
+}
+
+/* User message styling */
+.stMarkdown p:has(strong:contains("User")) {
+    background-color: #f7f7f8;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    color: #000000;
+}
+
+/* Assistant message styling */
+.stMarkdown p:has(strong:contains("Assistant")) {
+    background-color: #ffffff;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #e5e5e5;
+    margin-bottom: 1rem;
+    color: #000000;
+}
+
+/* Loading animation */
+@keyframes thinking {
+    0% { content: "."; }
+    33% { content: ".."; }
+    66% { content: "..."; }
+}
+
+.thinking::after {
+    content: "";
+    animation: thinking 1.5s infinite;
+    display: inline-block;
+    width: 20px;
+}
+
+/* Input styling */
+.stTextArea textarea {
+    color: #000000;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 16px;
+}
+
+/* Button styling */
+.stButton button {
+    background-color: #0066cc;
+    color: white;
+    border-radius: 8px;
+    padding: 0.5rem 1.5rem;
+    font-weight: 500;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.stButton button:hover {
+    background-color: #0052a3;
+    transform: translateY(-1px);
+}
+
+/* Divider styling */
+hr {
+    border: none;
+    border-top: 1px solid #e5e5e5;
+    margin: 1.5rem 0;
+}
+
+/* Theme variables */
+:root {
+    --question-mode-bg: #fff5f1;
+    --question-mode-text: #000000;
+    --exam-mode-bg: #1e1e1e;
+    --exam-mode-text: #ffffff;
+}
+
+/* Mode-specific styling */
+.question-mode {
+    background-color: var(--question-mode-bg) !important;
+    color: var(--question-mode-text) !important;
+}
+
+.exam-mode {
+    background-color: var(--exam-mode-bg) !important;
+    color: var(--exam-mode-text) !important;
+}
+
+/* Message styling for different modes */
+.question-mode .stMarkdown {
+    background-color: #ffffff;
+    color: #000000;
+}
+
+.exam-mode .stMarkdown {
+    background-color: #2d2d2d;
+    color: #ffffff;
+}
+
+/* Input styling for different modes */
+.question-mode .stTextArea textarea {
+    background-color: #ffffff;
+    color: #000000;
+}
+
+.exam-mode .stTextArea textarea {
+    background-color: #2d2d2d;
+    color: #ffffff;
+}
+
+/* Button styling for different modes */
+.question-mode .stButton button {
+    background-color: #0066cc;
+    color: #ffffff;
+}
+
+.exam-mode .stButton button {
+    background-color: #4CAF50;
+    color: #ffffff;
+}
+
+/* Mode switch button */
+.mode-switch {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1000;
+}
+
+/* Exam mode specific */
+.exam-container {
+    background-color: #2d2d2d;
+    border-radius: 8px;
+    padding: 2rem;
+    margin: 1rem 0;
+}
+
+.start-button {
+    background-color: #4CAF50 !important;
+    margin-top: 2rem;
+}
+
+/* Question mode specific */
+.question-container {
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 2rem;
+    margin: 1rem 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Override Streamlit's default background */
+.stApp > header {
+    background-color: transparent !important;
+}

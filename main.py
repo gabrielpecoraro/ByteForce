@@ -5,7 +5,7 @@ from RAG.RAG import RAG
 
 
 # Path to the folder containing your PDFs
-pdf_folder = "./DatasetFinal"
+pdf_folder = "./Dataset_bis"
 
 # Check if GPU is available
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
@@ -52,11 +52,8 @@ rag_system = RAG(
 # === Ask a question interactively ===
 print("\n✅ RAG system is ready.")
 
-while True:
-    question = input("\n🤖 Ask a legal question (or type 'exit' to quit): ").strip()
-    if question.lower() in ["exit", "quit"]:
-        print("👋 Goodbye!")
-        break
+for q, _ in rag_system.test_questions:
+    print(f"\n📌 Question: {q}")
+    answer = rag_system.query(q)
+    print("🧾 Answer:\n", answer)
 
-    answer = rag_system.query(question)
-    print("\n🧾 Answer:\n", answer)

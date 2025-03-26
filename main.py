@@ -5,7 +5,7 @@ from RAG.RAG import RAG
 
 
 # Path to the folder containing your PDFs
-pdf_folder = "./Dataset_bis"
+pdf_folder = "./DatasetFinal"
 
 # Check if GPU is available
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
@@ -28,7 +28,7 @@ metadatas = [chunk["metadata"] for chunk in chunks]
 faiss_index_dir = "faiss_index"
 
 
-# api_key = "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"
+api_key = "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"
 # model_name = "mistral-embed"
 model_name = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 llm_name = "mistralai/Mistral-7B-Instruct-v0.2"
@@ -56,4 +56,3 @@ for q, _ in rag_system.test_questions:
     print(f"\n📌 Question: {q}")
     answer = rag_system.query(q)
     print("🧾 Answer:\n", answer)
-

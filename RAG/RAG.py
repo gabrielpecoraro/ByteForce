@@ -7,6 +7,7 @@ from docx import Document
 import random
 from huggingface_hub import InferenceClient
 from pathlib import Path
+from RAG.llm_ollama import OllamaLLM
 
 
 def extract_qa_from_docx(path):
@@ -57,7 +58,6 @@ class RAG:
         embedding_model_name,
         faiss_index_dir,
         llm_model_name,
-        huggingfacehub_api_token,
         few_shot_docx_path="Questions Sup OEB.docx",
         max_few_shot_examples=5,
     ):
@@ -65,9 +65,8 @@ class RAG:
         self.vectorstore = FAISS.load_local(
             faiss_index_dir, self.embedder, allow_dangerous_deserialization=True
         )
-        self.client = InferenceClient(
-            model=llm_model_name, token=huggingfacehub_api_token
-        )
+        self.client = OllamaLLM(model_name=llm_model_name)
+
 
         self.few_shot_prompt = ""
         if few_shot_docx_path and Path(few_shot_docx_path).exists():
@@ -98,12 +97,11 @@ class RAG:
             question=question,
         )
 
-        response = self.client.text_generation(
+        response = self.client.generate(
             formatted_prompt,
-            max_new_tokens=512,
             temperature=0.5,
-            do_sample=True,
-            return_full_text=False,
+            max_tokens=512,
         )
+
 
         return response

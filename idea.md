@@ -13,7 +13,7 @@ Welcome to the **Ideas File**! This document serves as a central place for contr
 ## Proposed Ideas Templates 
 ### 1. Problems
 **Description:** The current problems we are facing
--case_law and guidlines not opening yet, embedding and metadata saving in faiss, using a local model
+- using a local model and which one- bar not showing - using the same model directly from embedding to embed
 **Priority:** [High]
 **Assigned To (Optional):** @username
 

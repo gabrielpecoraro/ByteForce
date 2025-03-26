@@ -3,27 +3,38 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from langchain_community.llms import HuggingFaceHub
 from langchain.embeddings import HuggingFaceEmbeddings
+from sentence_transformers import SentenceTransformer
 from docx import Document
 import random
+
+
 
 
 def extract_qa_from_docx(path):
     doc = Document(path)
     qa_pairs = []
     question = ""
+    in_question = False
     answer = ""
+
     for para in doc.paragraphs:
         text = para.text.strip()
-        if text.lower().startswith("question:"):
-            question = text[len("question:") :].strip()
-        elif text.lower().startswith("answer:"):
-            answer = text[len("answer:") :].strip()
-        elif text.strip() == "---" and question and answer:
-            qa_pairs.append((question, answer))
-            question, answer = "", ""
-    if question and answer:
-        qa_pairs.append((question, answer))
+
+        if text.lower().startswith("question"):
+            # Start of a new question
+            in_question = True
+            question = ""
+            answer = ""
+        elif text.lower().startswith("answer"):
+            in_question = False  # Done collecting question
+        elif text.lower().startswith("the correct answer is"):
+            answer = text
+            qa_pairs.append((question.strip(), answer.strip()))
+        elif in_question:
+            question += " " + text  # Append to current question
+
     return qa_pairs
+
 
 
 def format_few_shots(qa_pairs, max_examples=3):
@@ -38,9 +49,11 @@ def format_few_shots(qa_pairs, max_examples=3):
     return prompt
 
 
-def get_random_test_questions(qa_pairs, n=5, seed=42):
+def get_random_test_questions(qa_pairs, n=5, seed=19):
+    import random
     random.seed(seed)
-    return random.sample(qa_pairs, min(n, len(qa_pairs)))
+    return [q for q, _ in random.sample(qa_pairs, min(n, len(qa_pairs)))]
+
 
 
 class RAG:
@@ -52,7 +65,7 @@ class RAG:
         huggingfacehub_api_token,
     ):
         # Initialize embedding model
-        self.embedder = HuggingFaceEmbeddings(model_name=embedding_model_name)
+        self.embedder = SentenceTransformer(embedding_model_name)
 
         # Load FAISS index
         self.vectorstore = FAISS.load_local(
@@ -72,7 +85,7 @@ class RAG:
         qa_pairs = extract_qa_from_docx("Questions Sup OEB.docx")
         few_shot_examples = format_few_shots(qa_pairs, max_examples=8)
         self.test_questions = get_random_test_questions(
-            qa_pairs, n=5, seed=42
+            qa_pairs, n=5, seed=19
         )  # repeatable sample
 
         # Define enhanced prompt template with few-shot examples

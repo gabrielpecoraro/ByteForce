@@ -1,221 +1,124 @@
-import streamlit as st
-import streamlit.components.v1 as components
+import sys
 import os
-from exam_questions import ExamQuestions
+os.environ["STREAMLIT_WATCHER_TYPE"] = "none"
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import streamlit as st
+import random
+from RAG.RAG import RAG
+from streamlit.components.v1 import html
 
 class RAGInterface:
     def __init__(self):
         st.set_page_config(
-            page_title="LegalRAG Assistant",
+            page_title="AI Assistant",
             layout="wide",
             initial_sidebar_state="collapsed",
         )
 
-        # Initialize mode and apply theme
+        # Inject CSS and JS for UI enhancements
+        css_path = os.path.join(os.path.dirname(__file__), "interface.css")
+        js_path = os.path.join(os.path.dirname(__file__), "interface.js")
+
+        with open(css_path, "r") as f:
+            styles = f"<style>{f.read()}</style>"
+            st.markdown(styles, unsafe_allow_html=True)
+
+        with open(js_path, "r") as f:
+            script = f"<script>{f.read()}</script>"
+            html(script, height=0)
+
+        # Set default mode to "question" if not already set
         if "mode" not in st.session_state:
             st.session_state.mode = "question"
 
-        # Apply theme based on mode
-        theme = """
-        <style>
-            body {
-                background-color: %s !important;
-                color: %s !important;
-            }
-            .stApp {
-                background-color: %s !important;
-            }
-        </style>
-        """ % (
-            "#fff5f1" if st.session_state.mode == "question" else "#1e1e1e",
-            "#000000" if st.session_state.mode == "question" else "#ffffff",
-            "#fff5f1" if st.session_state.mode == "question" else "#1e1e1e",
-        )
-        st.markdown(theme, unsafe_allow_html=True)
+        # Initialize RAG backend only once
+        self.rag_system = self._initialize_rag()
 
-        # Initialize exam questions
-        self.exam_questions = ExamQuestions()
-
-        # Get the directory of the current file
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-
-        # Load and inject CSS
-        css_path = os.path.join(current_dir, "interface.css")
-        with open(css_path, "r") as css_file:
-            css = css_file.read()
-            components.html(
-                f"<script>{css}</script>",
-                height=0,
-            )
-
-        # Load and inject JavaScript
-        js_path = os.path.join(current_dir, "interface.js")
-        with open(js_path, "r") as js_file:
-            js = js_file.read()
-            components.html(
-                f"""
-                <script>{js}</script>
-                """,
-                height=0,
-            )
-
-        self.initialize_session_state()
-
-    def initialize_session_state(self):
-        """Initialize session state variables"""
+        # Session vars
         if "chat_history" not in st.session_state:
             st.session_state.chat_history = []
+        if "exam_questions" not in st.session_state:
+            st.session_state.exam_questions = []
+        if "exam_answers" not in st.session_state:
+            st.session_state.exam_answers = []
+        if "current_question_idx" not in st.session_state:
+            st.session_state.current_question_idx = 0
+
+    #@st.cache_resource(show_spinner=False)
+    def _initialize_rag(_self):
+        return RAG(
+            embedding_model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+            faiss_index_dir="faiss_index",
+            llm_model_name="mistral"
+        )
 
     def run_rag(self, user_input):
-        """
-        Simulated RAG system response with mock legal document context and responses
-        """
-        import random
-        import time
-
-        # Simulate processing time
-        time.sleep(1)
-
-        # Mock document contexts
-        contexts = {
-            "EPC": "According to Article 52 EPC, European patents shall be granted for any inventions...",
-            "PCT": "Rule 4 of the PCT states that the request shall contain the prescribed information...",
-            "Guidelines": "The Guidelines for Examination specify that inventive step requires...",
-        }
-
-        # Simple keyword matching for demo
-        response = "I apologize, but I couldn't find relevant information in the legal documents."
-
-        keywords = {
-            "patent": ["EPC", "PCT"],
-            "invention": ["EPC"],
-            "application": ["PCT"],
-            "examination": ["Guidelines"],
-        }
-
-        # Find matching context
-        for keyword, sources in keywords.items():
-            if keyword.lower() in user_input.lower():
-                source = random.choice(sources)
-                context = contexts[source]
-                confidence = random.uniform(0.7, 0.95)
-
-                response = f"""Based on {source} documents (confidence: {confidence:.2f}):
-                
-{context}
-
-This information comes from the {source} documentation."""
-                break
-
-        return response
-
-    def display_chat_history(self):
-        """Display the chat history with improved formatting"""
-        for message in st.session_state.chat_history:
-            with st.container():
-                st.markdown(f"**🧑‍💻 User:** {message['user']}")
-                st.markdown(f"**🤖 Assistant:** {message['assistant']}")
-                st.markdown("---")
+        return self.rag_system.query(user_input)
 
     def run(self):
-        # Mode switch button
+        # 🔒 Always use light theme
+        st.markdown("<style>html, body, .stApp { background-color: #ffffff !important; color: #000000 !important; }</style>", unsafe_allow_html=True)
+        st.markdown("<div class='question-mode'>", unsafe_allow_html=True)
+
+        st.title("🧠 Bytelex v1")
+
+        # ✅ Restore mode switch functionality
         if st.button("Switch Mode", key="mode_switch"):
-            st.session_state.mode = (
-                "exam" if st.session_state.mode == "question" else "question"
-            )
+            st.session_state.mode = "exam" if st.session_state.mode == "question" else "question"
             st.rerun()
 
-        # Title with mode indicator
-        st.markdown(
-            f"""
-        <h1 style='text-align: center; color: {"#000000" if st.session_state.mode == "question" else "#ffffff"}'>
-            💬 LegalRAG: Patent Document Assistant
-        </h1>
-        <h3 style='text-align: center; color: {"#000000" if st.session_state.mode == "question" else "#ffffff"}'>
-            {st.session_state.mode.title()} Mode
-        </h3>
-        """,
-            unsafe_allow_html=True,
-        )
+        st.subheader(f"Current Mode: {st.session_state.mode.title()}")
 
         if st.session_state.mode == "question":
             self.run_question_mode()
         else:
             self.run_exam_mode()
 
+        st.markdown("</div>", unsafe_allow_html=True)
+
     def run_question_mode(self):
-        st.title("💬 LegalRAG: Patent Document Assistant")
-        st.markdown("---")
+        user_input = st.text_input("Ask your question:")
+        if user_input:
+            with st.spinner("Thinking..."):
+                answer = self.run_rag([user_input])[0]
+            st.session_state.chat_history.append({"user": user_input, "assistant": answer})
+            st.rerun()
 
-        # Create a container for chat history at the top
-        chat_container = st.container()
-
-        # Create input section at the bottom
-        with st.container():
-            # Initialize the input value from session state
-            if "user_input" not in st.session_state:
-                st.session_state.user_input = ""
-
-            user_input = st.text_area(
-                "Enter your question about patents (Press Enter to submit, Shift+Enter for new line):",
-                value=st.session_state.user_input,
-                height=100,
-                key="input_area",
-            )
-
-            col1, col2 = st.columns([1, 5])
-
-            with col1:
-                if st.button("Submit", type="primary"):
-                    if user_input and len(user_input.strip()) > 0:
-                        with st.spinner("Thinking..."):
-                            response = self.run_rag(user_input)
-                            st.session_state.chat_history.append(
-                                {"user": user_input, "assistant": response}
-                            )
-                            # Clear input by updating session state
-                            st.session_state.user_input = ""
-                            st.rerun()
-
-            with col2:
-                if st.button("Clear History", type="secondary"):
-                    st.session_state.chat_history = []
-                    st.rerun()
-
-        # Display chat history in the container
-        with chat_container:
-            self.display_chat_history()
+        for exchange in st.session_state.chat_history:
+            st.markdown(f"**You:** {exchange['user']}")
+            st.markdown(f"**Bot:** {exchange['assistant']}")
+            st.markdown("---")
 
     def run_exam_mode(self):
-        with st.container():
-            if "current_question" not in st.session_state:
-                st.session_state.current_question = None
+        if len(st.session_state.exam_questions) < 10:
+            if st.session_state.current_question_idx == len(st.session_state.exam_questions):
+                question = random.choice(self.rag_system.test_questions)
+                st.session_state.exam_questions.append(question)
+            else:
+                question = st.session_state.exam_questions[st.session_state.current_question_idx]
 
-            if st.button("Start New Question", type="primary", key="start_exam"):
-                st.session_state.current_question = (
-                    self.exam_questions.get_random_question()
-                )
+            st.markdown(f"**Question {st.session_state.current_question_idx + 1}/10:** {question}")
+            answer = st.text_area("Your answer:")
 
-            if st.session_state.current_question:
-                st.markdown(f"**Question:**\n\n{st.session_state.current_question}")
+            if st.button("Submit Answer"):
+                st.session_state.exam_answers.append(answer)
+                st.session_state.current_question_idx += 1
+                st.rerun()
+        else:
+            st.success("🎉 Exam Completed!")
+            st.markdown("### Your Answers:")
+            for idx, (q, a) in enumerate(zip(st.session_state.exam_questions, st.session_state.exam_answers)):
+                st.markdown(f"**Q{idx + 1}:** {q}")
+                st.markdown(f"**Your Answer:** {a}")
+                st.markdown("---")
 
-                user_answer = st.text_area(
-                    "Your Answer:", height=150, key="exam_answer"
-                )
-
-                if st.button("Submit Answer", type="primary"):
-                    response = self.run_rag(user_answer)
-                    st.session_state.chat_history.append(
-                        {
-                            "user": f"Question: {st.session_state.current_question}\n\nAnswer: {user_answer}",
-                            "assistant": response,
-                        }
-                    )
-                    st.session_state.current_question = None
-                    st.rerun()
-
+            if st.button("Reset Exam"):
+                st.session_state.exam_questions = []
+                st.session_state.exam_answers = []
+                st.session_state.current_question_idx = 0
+                st.rerun()
 
 if __name__ == "__main__":
-    interface = RAGInterface()
-    interface.run()
+    app = RAGInterface()
+    app.run()

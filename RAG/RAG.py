@@ -1,11 +1,8 @@
 from langchain_community.vectorstores import FAISS
 from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
-from langchain_community.llms import HuggingFaceHub
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from docx import Document
 import random
-from huggingface_hub import InferenceClient
 from pathlib import Path
 from RAG.llm_ollama import OllamaLLM
 
@@ -99,7 +96,7 @@ class RAG:
 
         response = self.client.generate(
             formatted_prompt,
-            temperature=0.5,
+            temperature=0.2,
             max_tokens=512,
         )
 

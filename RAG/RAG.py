@@ -1,10 +1,12 @@
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain.prompts import PromptTemplate
-from langchain_community.embeddings import HuggingFaceEmbeddings
 from docx import Document
 import random
 from pathlib import Path
+import os
 from RAG.llm_ollama import OllamaLLM
+from requests.exceptions import ConnectionError
 
 
 def extract_qa_from_docx(path):
@@ -58,10 +60,19 @@ class RAG:
         few_shot_docx_path="Questions Sup OEB.docx",
         max_few_shot_examples=5,
     ):
+        # Initialize embedding model with new package
         self.embedder = HuggingFaceEmbeddings(model_name=embedding_model_name)
-        self.vectorstore = FAISS.load_local(
-            faiss_index_dir, self.embedder, allow_dangerous_deserialization=True
-        )
+
+        # Check if FAISS index exists
+        if os.path.exists(os.path.join(faiss_index_dir, "index.faiss")):
+            self.vectorstore = FAISS.load_local(
+                faiss_index_dir, self.embedder, allow_dangerous_deserialization=True
+            )
+        else:
+            print(f"Warning: FAISS index not found at {faiss_index_dir}")
+            print("Please run the indexing process first using main.py")
+            raise FileNotFoundError(f"FAISS index not found at {faiss_index_dir}")
+
         self.client = OllamaLLM(model_name=llm_model_name)
 
         self.few_shot_prompt = ""
@@ -71,12 +82,11 @@ class RAG:
                 qa_pairs, max_examples=max_few_shot_examples
             )
         self.test_questions = [
-            """The applicants for international application PCT-1 are based in Japan. Having regard to the provisions of the EPC and the PCT, can the applicants themselves comply with the requirements of Rule 159(1) EPC?
- 
-A.	No, a professional representative must be appointed.
-B.	No, a professional representative or appropriate legal representative must be appointed.
-C.	Yes, the applicants can themselves comply with the requirements of Rule 159(1) EPC.
-.""",
+            "What are the requirements for patentability under EPC Article 52?",
+            "How is inventive step assessed in patent examination?",
+            "What constitutes prior art under the EPC?",
+            "Explain the concept of unity of invention.",
+            "What is the difference between PCT and EPC applications?",
         ]
 
         self.prompt_template = PromptTemplate(
@@ -91,19 +101,25 @@ C.	Yes, the applicants can themselves comply with the requirements of Rule 159(1
         )
 
     def query(self, question, top_k=5):
-        docs = self.vectorstore.similarity_search(question, k=top_k)
-        context = "\n\n".join([doc.page_content for doc in docs])
+        try:
+            # Get relevant documents
+            docs = self.vectorstore.similarity_search(question, k=top_k)
+            context = "\n\n".join([doc.page_content for doc in docs])
 
-        formatted_prompt = self.prompt_template.format(
-            few_shots=self.few_shot_prompt,
-            context=context,
-            question=question,
-        )
+            # Format prompt
+            formatted_prompt = self.prompt_template.format(
+                few_shots=self.few_shot_prompt, context=context, question=question
+            )
 
-        response = self.client.generate(
-            formatted_prompt,
-            temperature=0.2,
-            max_tokens=512,
-        )
+            # Generate response
+            response = self.client.generate(
+                formatted_prompt,
+                temperature=0.2,
+                max_tokens=512,
+            )
+            return response
 
-        return response
+        except ConnectionError:
+            return "Error: Cannot connect to Ollama. Please ensure Ollama is running with 'ollama serve' command."
+        except Exception as e:
+            return f"Error: {str(e)}"

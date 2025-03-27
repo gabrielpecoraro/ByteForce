@@ -18,7 +18,7 @@ Loader/__pycache__/
 *.pyc
 
 # Ignore pycache in Rag
-RAG/__pycache__/RAG.cpython-313.pyc
+RAG/__pycache__/
 
 faiss_index/
 faiss_index/*

@@ -35,16 +35,23 @@ def extract_qa_from_docx(path):
     return qa_pairs
 
 @st.cache_data(show_spinner=False)
-def format_few_shots(qa_pairs, max_examples=3):
-    prompt = ""
+def format_few_shots(qa_pairs, max_examples=10):
+    """
+    Formats few-shot examples to demonstrate how a highly experienced legal assistant should answer questions.
+    Each example should illustrate that answers are strictly based on the provided legal context.
+    """
+    prompt = (
+        "Below are examples of how a highly experienced legal assistant answers legal questions using only the provided context. "
+        "If the context is insufficient, the assistant clearly states that fact.\n\n"
+    )
     for q, a in qa_pairs[:max_examples]:
         prompt += (
-            "Context:\nThese are fewshots examples of how to answer the questions.\n\n"
             f"Question: {q}\n"
             f"Answer: {a}\n"
-            "---\n"
+            "----\n"
         )
     return prompt
+
 
 
 def get_random_test_questions(qa_pairs, n=5, seed=19):
@@ -87,15 +94,42 @@ class RAG:
         ]
 
         self.prompt_template = PromptTemplate(
-            template=(
-                "{few_shots}"
-                "You are an expert legal assistant trained to answer questions using legal context only.\n\n"
-                "Context:\n{context}\n\n"
-                "Question: {question}\n\n"
-                "Answer:"
-            ),
-            input_variables=["few_shots", "context", "question"],
+        template=(
+        "{few_shots}"
+        "You are a highly experienced legal assistant, specializing in legal research and analysis. "
+        "Your answers must be based solely on the provided legal context. Do not incorporate any outside information, opinions, or assumptions. "
+        "If the context is insufficient to answer the question, clearly state that you do not have enough information.\n\n"
+        "Context:\n{context}\n\n"
+        "Question: {question}\n\n"
+        "Answer:"
+    ),
+    input_variables=["few_shots", "context", "question"],
+)
+
+    def generate_exam_question(self, custom_prompt=None):
+        """
+        Generates a legal exam question using the LLM. If available, it includes few-shot examples
+        to guide the question style.
+        """
+        # Include few-shot examples if they exist
+        few_shot = self.few_shot_prompt if self.few_shot_prompt else ""
+        
+        # Build the prompt using the few-shot examples
+        if custom_prompt is None:
+            custom_prompt = (
+                f"{few_shot}\n"
+                "Using the style of the above examples, generate a challenging legal exam question. "
+                "Ensure the question is clear, focused, and grounded in legal principles. "
+                "Do not include any additional commentary—only provide the question."
+            )
+            
+        generated_question = self.client.generate(
+            custom_prompt,
+            temperature=0.5,
+            max_tokens=150
         )
+        return generated_question
+
 
     def query(self, question, top_k=5):
         try:

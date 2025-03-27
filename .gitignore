@@ -11,3 +11,14 @@ Loader/__pycache__/
 *.pdf
 
 .venv/
+
+*.zip
+
+# Ignore all cython
+*.pyc
+
+# Ignore pycache in Rag
+RAG/__pycache__/RAG.cpython-313.pyc
+
+faiss_index/
+faiss_index/*

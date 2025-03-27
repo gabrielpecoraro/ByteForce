@@ -64,14 +64,20 @@ class RAG:
         )
         self.client = OllamaLLM(model_name=llm_model_name)
 
-
         self.few_shot_prompt = ""
         if few_shot_docx_path and Path(few_shot_docx_path).exists():
             qa_pairs = extract_qa_from_docx(few_shot_docx_path)
-            self.few_shot_prompt = format_few_shots(qa_pairs, max_examples=max_few_shot_examples)
+            self.few_shot_prompt = format_few_shots(
+                qa_pairs, max_examples=max_few_shot_examples
+            )
         self.test_questions = [
-                "What are the requirements for patentability under EPC Article 52?"
-            ]
+            """The applicants for international application PCT-1 are based in Japan. Having regard to the provisions of the EPC and the PCT, can the applicants themselves comply with the requirements of Rule 159(1) EPC?
+ 
+A.	No, a professional representative must be appointed.
+B.	No, a professional representative or appropriate legal representative must be appointed.
+C.	Yes, the applicants can themselves comply with the requirements of Rule 159(1) EPC.
+.""",
+        ]
 
         self.prompt_template = PromptTemplate(
             template=(
@@ -99,6 +105,5 @@ class RAG:
             temperature=0.2,
             max_tokens=512,
         )
-
 
         return response

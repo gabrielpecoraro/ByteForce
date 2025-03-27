@@ -101,7 +101,8 @@ class RAG:
         try:
             # Get relevant documents
             docs = self.vectorstore.similarity_search(question, k=top_k)
-            context = "\n\n".join([doc.page_content for doc in docs])
+            context = "\n\n".join([f"Metadata: {doc.metadata}\nContent: {doc.page_content}" for doc in docs])
+
 
             # Format prompt
             formatted_prompt = self.prompt_template.format(

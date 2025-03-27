@@ -51,111 +51,7 @@ class PDFLoader:
         else:
             raise ValueError(f"Year not found in '{pdf_name}'. Ensure filename contains a year (19xx or 20xx).")
 
-    # def load_and_save_pdf(self, pdf_file, doc_type, folder_path):
-    #     """
-    #     Load a PDF file and save extracted content into a .pkl file.
-    #     If the file has already been processed (based on metadata "file_name"),
-    #     it skips reprocessing.
-    #     """
-    #     pkl_folder = os.path.join(folder_path, "pkl")
-    #     os.makedirs(pkl_folder, exist_ok=True)
-    #     pkl_file = os.path.join(pkl_folder, f"{doc_type}.pkl")
-    #     documents = []
-
-    #     # Load existing documents if the pkl exists and check for duplicates
-    #     if os.path.exists(pkl_file):
-    #         with open(pkl_file, "rb") as f:
-    #             existing_documents = pickle.load(f)
-    #         # Check if this PDF file was already processed
-    #         if any(doc.metadata.get("file_name") == pdf_file for doc in existing_documents):
-    #             print(f"✔ '{pdf_file}' already exists in '{pkl_file}'. Skipping processing.")
-    #             return existing_documents
-    #         documents = existing_documents
-    #     else:
-    #         # Create an empty .pkl file if it doesn't exist
-    #         with open(pkl_file, "wb") as f:
-    #             pickle.dump(documents, f)
-    #         print(f"✔ Created new '{pkl_file}' file.")
-
-    #     if pdf_file.endswith(".pdf"):
-    #         pdf_path = os.path.join(folder_path, pdf_file)
-    #         try:
-    #             pdf_document = fitz.open(pdf_path)
-    #             print(f"✔ Successfully opened '{pdf_file}'. It has {pdf_document.page_count} pages.")
-
-    #             for page_num in range(pdf_document.page_count):
-    #                 page = pdf_document[page_num]
-    #                 text = page.get_text()
-    #                 documents.append(
-    #                     Document(
-    #                         page_content=text,
-    #                         metadata={"file_name": pdf_file, "page": page_num + 1},
-    #                     )
-    #                 )
-    #             pdf_document.close()
-
-    #             with open(pkl_file, "wb") as f:
-    #                 pickle.dump(documents, f)
-    #                 print(f"✔ Successfully updated '{pkl_file}' with new documents.")
-
-    #         except Exception as e:
-    #             print(f"⚠ Error reading '{pdf_file}': {e}")
-    #     else:
-    #         print(f"⚠ '{pdf_file}' is not a valid PDF file.")
-
-    #     return documents
-
-
-    # def load_and_save_pdf(self, pdf_file, doc_type, folder_path):
-    #     """
-    #     Load a PDF file and save extracted content into a .pkl file.
-    #     If the file has already been processed (based on metadata "file_name"),
-    #     it skips reprocessing.
-    #     """
-    #     pkl_folder = os.path.join(folder_path, "pkl")
-    #     os.makedirs(pkl_folder, exist_ok=True)
-    #     pkl_file = os.path.join(pkl_folder, f"{doc_type}.pkl")
-    #     documents = []
-
-    #     # Load existing documents if the pkl exists and check for duplicates
-    #     if os.path.exists(pkl_file):
-    #         with open(pkl_file, "rb") as f:
-    #             existing_documents = pickle.load(f)
-    #         # Check if this PDF file was already processed
-    #         if any(doc.metadata.get("file_name") == pdf_file for doc in existing_documents):
-    #             print(f"✔ '{pdf_file}' already exists in '{pkl_file}'. Skipping processing.")
-    #             return existing_documents
-    #         documents = existing_documents
-    #     else:
-    #         # Create an empty .pkl file if it doesn't exist
-    #         with open(pkl_file, "wb") as f:
-    #             pickle.dump(documents, f)
-    #         print(f"✔ Created new '{pkl_file}' file.")
-
-    #     if pdf_file.endswith(".pdf"):
-    #         pdf_path = os.path.join(folder_path, pdf_file)
-    #         try:
-    #             with pdfplumber.open(pdf_path) as pdf:
-    #                 print(f"✔ Successfully opened '{pdf_file}'. It has {len(pdf.pages)} pages.")
-    #                 for page_num, page in enumerate(pdf.pages):
-    #                     text = page.extract_text() or ""
-    #                     clean_text = self.remove_headers_and_footers(text)
-    #                     documents.append(
-    #                         Document(
-    #                             page_content=clean_text,
-    #                             metadata={"file_name": pdf_file, "page": page_num + 1},
-    #                         )
-    #                     )
-    #             with open(pkl_file, "wb") as f:
-    #                 pickle.dump(documents, f)
-    #                 print(f"✔ Successfully updated '{pkl_file}' with new documents.")
-
-    #         except Exception as e:
-    #             print(f"⚠ Error reading '{pdf_file}': {e}")
-    #     else:
-    #         print(f"⚠ '{pdf_file}' is not a valid PDF file.")
-
-    #     return documents
+   
 
 
 
@@ -367,39 +263,7 @@ class PDFLoader:
             "content": structured_content
         }
 
-    # def chunk_text(self, structured_dict, chunk_size=1024, overlap=256):
-    #     """
-    #     Chunk the structured content into pieces of roughly chunk_size words with an overlap.
-    #     First, the content is flattened into a single string.
-    #     """
-    #     content = structured_dict["content"]
-    #     # If content is a list (or nested lists), flatten it into one continuous string.
-    #     if isinstance(content, list):
-    #         flattened = []
-    #         for item in content:
-    #             if isinstance(item, list):
-    #                 # Join inner lists with spaces
-    #                 flattened.append(" ".join(item))
-    #             else:
-    #                 flattened.append(item)
-    #         text = " ".join(flattened)
-    #     else:
-    #         text = content
-
-    #     # Debug: print the total word count after flattening
-    #     total_words = len(text.split())
-    #     print("Total words after flattening:", total_words)
-
-    #     words = text.split()
-    #     chunks = [
-    #         " ".join(words[i:i + chunk_size])
-    #         for i in range(0, len(words), chunk_size - overlap)
-    #     ]
-    #     metadata_chunks = [
-    #         {"type": structured_dict["type"], "year": structured_dict["year"], "chunk_index": idx}
-    #         for idx, _ in enumerate(chunks)
-    #     ]
-    #     return [{"content": chunk, "metadata": metadata_chunks[idx]} for idx, chunk in enumerate(chunks)]
+    
     
 
     def chunk_text_adapt(self, structured_dict, min_chunk_size=50, max_chunk_size=512, overlap=50):

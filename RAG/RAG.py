@@ -7,6 +7,7 @@ from pathlib import Path
 import os
 from RAG.llm_ollama import OllamaLLM
 from requests.exceptions import ConnectionError
+import streamlit as st
 
 
 def extract_qa_from_docx(path):
@@ -33,12 +34,12 @@ def extract_qa_from_docx(path):
 
     return qa_pairs
 
-
+@st.cache_data(show_spinner=False)
 def format_few_shots(qa_pairs, max_examples=3):
     prompt = ""
     for q, a in qa_pairs[:max_examples]:
         prompt += (
-            "Context:\nThis is the type of legal information relevant to the question.\n\n"
+            "Context:\nThese are fewshots examples of how to answer the questions.\n\n"
             f"Question: {q}\n"
             f"Answer: {a}\n"
             "---\n"
@@ -58,7 +59,7 @@ class RAG:
         faiss_index_dir,
         llm_model_name,
         few_shot_docx_path="Questions Sup OEB.docx",
-        max_few_shot_examples=5,
+        max_few_shot_examples=2,
     ):
         # Initialize embedding model with new package
         self.embedder = HuggingFaceEmbeddings(model_name=embedding_model_name)
@@ -82,11 +83,7 @@ class RAG:
                 qa_pairs, max_examples=max_few_shot_examples
             )
         self.test_questions = [
-            "What are the requirements for patentability under EPC Article 52?",
-            "How is inventive step assessed in patent examination?",
-            "What constitutes prior art under the EPC?",
-            "Explain the concept of unity of invention.",
-            "What is the difference between PCT and EPC applications?",
+            "What are the requirements for patentability under EPC Article 52?"
         ]
 
         self.prompt_template = PromptTemplate(

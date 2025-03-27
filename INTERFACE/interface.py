@@ -14,6 +14,15 @@ from streamlit.components.v1 import html
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
 
+@st.cache_resource(show_spinner=False)
+def get_rag_instance():
+    return RAG(
+        embedding_model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        faiss_index_dir="faiss_index",
+        llm_model_name="gemma2:2b",
+    )
+
+
 class RAGInterface:
     def __init__(self):
         st.set_page_config(
@@ -58,19 +67,16 @@ class RAGInterface:
         with open(js_path, "r") as f:
             html(f"<script>{f.read()}</script>", height=0)
 
-    # @st.cache_resource(show_spinner=False)
+    
     def _initialize_rag(_self):
         try:
-            return RAG(
-                embedding_model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
-                faiss_index_dir="../faiss_index",
-                llm_model_name="mistral",
-            )
+            return get_rag_instance()
         except FileNotFoundError:
             st.error(
                 "FAISS index not found. Please run main.py first to create the index."
             )
             st.stop()
+
 
     def run_rag(self, user_input):
         return self.rag_system.query(user_input)
@@ -85,7 +91,7 @@ class RAGInterface:
 
         st.title("🧠 Bytelex v1")
 
-        # ✅ Restore mode switch functionality
+        # switch button
         if st.button("Switch Mode", key="mode_switch"):
             st.session_state.mode = (
                 "exam" if st.session_state.mode == "question" else "question"
@@ -102,22 +108,28 @@ class RAGInterface:
         st.markdown("</div>", unsafe_allow_html=True)
 
     def run_question_mode(self):
-        user_input = st.text_input("Ask your question:")
-        if user_input:
+        # Wrap the text input in a form to control submission
+        with st.form(key="question_form"):
+            user_input = st.text_input("Ask your question:")
+            submit_button = st.form_submit_button("Submit")
+        
+        # Process the query only when the user clicks the submit button
+        if submit_button and user_input:
             with st.spinner("Thinking..."):
                 answer = self.run_rag(user_input)
-                if answer.startswith("Error:"):
-                    st.error(answer)
-                else:
-                    st.session_state.chat_history.append(
-                        {"user": user_input, "assistant": answer}
-                    )
-                    st.rerun()
-
+            if answer.startswith("Error:"):
+                st.error(answer)
+            else:
+                st.session_state.chat_history.append(
+                    {"user": user_input, "assistant": answer}
+                )
+        
+        # Display the chat history
         for exchange in st.session_state.chat_history:
             st.markdown(f"**You:** {exchange['user']}")
             st.markdown(f"**Bot:** {exchange['assistant']}")
             st.markdown("---")
+
 
     def run_exam_mode(self):
         if len(st.session_state.exam_questions) < 10:

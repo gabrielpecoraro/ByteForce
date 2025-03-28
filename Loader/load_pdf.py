@@ -1,6 +1,7 @@
 import os
 import pickle
 import fitz  # PyMuPDF
+import pdfplumber
 from langchain_core.documents import Document
 import re
 from termcolor import colored
@@ -51,10 +52,6 @@ class PDFLoader:
         else:
             raise ValueError(f"Year not found in '{pdf_name}'. Ensure filename contains a year (19xx or 20xx).")
 
-   
-
-
-
     def load_and_save_pdf(self, pdf_file, doc_type, folder_path):
         pkl_folder = os.path.join(folder_path, "pkl")
         os.makedirs(pkl_folder, exist_ok=True)
@@ -78,52 +75,41 @@ class PDFLoader:
 
         if pdf_file.endswith(".pdf"):
             try:
-                pdf_document = fitz.open(pdf_path)
-                print(f"✔ Successfully opened '{pdf_file}'. It has {pdf_document.page_count} pages.")
-
-                for page_num in range(pdf_document.page_count):
-                    page = pdf_document.load_page(page_num)
-                    blocks = page.get_text("dict")["blocks"]
-                    page_text = ""
-                    bolded_text = []
-
-                    for block in blocks:
-                        for line in block.get("lines", []):
-                            line_text = ""
-                            is_bold_line = False
-                            for span in line.get("spans", []):
-                                line_text += span["text"]
-                                # Check bold font flags (common: 16, 20, 24, etc.)
-                                if span["flags"] & 2**4:  # bold text usually has bit 4 set
-                                    is_bold_line = True
-                            page_text += line_text + "\n"
-                            bolded_text.append((line_text.strip(), is_bold_line))
-
-                    documents.append(
-                        Document(
-                            page_content=page_text.strip(),
-                            metadata={
-                                "file_name": pdf_file,
-                                "page": page_num + 1,
-                                "bolded_text": bolded_text
-                            },
+                
+                with pdfplumber.open(pdf_path) as pdf:
+                    print(f"✔ Successfully opened '{pdf_file}'. It has {len(pdf.pages)} pages.")
+                    for page_num, page in enumerate(pdf.pages):
+                        # Extract text with layout mode enabled
+                        text = page.extract_text(layout=True)
+                        bolded_lines = []
+                        if text:
+                            lines = text.splitlines()
+                            # Use page.chars to do a simple bold heuristic:
+                            for line in lines:
+                                # Check if any character in the page has 'Bold' in its fontname and is present in this line
+                                is_bold = any("Bold" in char.get("fontname", "") for char in page.chars if char["text"].strip() in line)
+                                bolded_lines.append((line.strip(), is_bold))
+                        else:
+                            text = ""
+                        documents.append(
+                            Document(
+                                page_content=text.strip(),
+                                metadata={
+                                    "file_name": pdf_file,
+                                    "page": page_num + 1,
+                                    "bolded_text": bolded_lines
+                                },
+                            )
                         )
-                    )
-
-                pdf_document.close()
-
                 with open(pkl_file, "wb") as f:
                     pickle.dump(documents, f)
-                    print(f"✔ Successfully updated '{pkl_file}' with bold-detection documents.")
-
+                    print(f"✔ Successfully updated '{pkl_file}' with pdfplumber documents.")
             except Exception as e:
                 print(f"⚠ Error reading '{pdf_file}': {e}")
-
         else:
             print(f"⚠ '{pdf_file}' is not a valid PDF file.")
 
         return documents
-
 
     def partition_and_structure_from_pkl(self, pkl_path, pdf_name):
         """
@@ -175,8 +161,6 @@ class PDFLoader:
                 chapters_with_articles.append(articles)
 
             structured_content = chapters_with_articles
-            
-            
 
         elif doc_type == "pct":
             articles = []
@@ -185,7 +169,7 @@ class PDFLoader:
                 metadata = doc.metadata
                 lines = doc.page_content.splitlines()
                 for line_text in lines:
-                    if any(title in line_text for title in self.PCTarticle_titles + self.PCTrule_titles) and self.is_bold(metadata,line_text):
+                    if any(title in line_text for title in self.PCTarticle_titles + self.PCTrule_titles) and self.is_bold(metadata, line_text):
                         if current_article:
                             articles.append("\n".join(current_article))
                             current_article = []
@@ -193,7 +177,6 @@ class PDFLoader:
                 if current_article:
                     articles.append("\n".join(current_article))
             structured_content = articles
-            
 
         elif doc_type == "guidelines":
             chapters = []
@@ -202,7 +185,7 @@ class PDFLoader:
                 metadata = doc.metadata
                 lines = doc.page_content.splitlines()
                 for line_text in lines:
-                    if self.is_bold(metadata,line_text) and (
+                    if self.is_bold(metadata, line_text) and (
                         any(title in line_text for title in self.guidlinechapter_titles)
                         or re.match(r"^\d", line_text)
                         or re.match(r"^Chapter\s+[IVXLCDM]+", line_text)
@@ -243,7 +226,7 @@ class PDFLoader:
                     is_new_item = (
                         (any(line_text.strip().startswith(title) for title in self.examquestions_titles)
                          or re.match(r"^\d+\.", line_text.strip()))
-                        and self.is_bold(metadata,line_text)
+                        and self.is_bold(metadata, line_text)
                     )
 
                     if is_new_item:
@@ -254,7 +237,7 @@ class PDFLoader:
 
                 if current_item:
                     content_list.append("\n".join(current_item).strip())
-    
+
             structured_content = {f"{item_type}s": content_list}
 
         return {
@@ -262,9 +245,6 @@ class PDFLoader:
             "year": doc_year,
             "content": structured_content
         }
-
-    
-    
 
     def chunk_text_adapt(self, structured_dict, min_chunk_size=50, max_chunk_size=512, overlap=50):
         """
@@ -336,7 +316,6 @@ class PDFLoader:
             for idx, chunk in enumerate(chunks)
         ]
 
-
     def chunk_text(self, structured_dict, chunk_size=1024, overlap=256):
         """
         Chunk structured content into pieces based on metadata (document type).
@@ -396,7 +375,7 @@ class PDFLoader:
             for i in range(0, len(words), chunk_size - overlap):
                 chunk = " ".join(words[i:i + chunk_size])
                 chunks.append(chunk)
-        
+
         total_chunks = len(chunk)
         print("Total words after flattening:", total_chunks)
 
@@ -404,9 +383,6 @@ class PDFLoader:
         metadata_chunks = [{"type": doc_type, "year": structured_dict["year"], "chunk_index": idx} for idx in range(len(chunks))]
 
         return [{"content": chunk, "metadata": metadata_chunks[idx]} for idx, chunk in enumerate(chunks)]
-
-
-
 
     def load_dataset(self, folder_path, chunk_size=1024, overlap=256) -> List[Dict]:
         """
@@ -424,8 +400,8 @@ class PDFLoader:
             try:
                 structured_dict = self.partition_and_structure_from_pkl(pkl_path, pdf_file)
                 print(colored(f"Chunking '{pdf_file}'", "magenta"))
-                #chunks = self.chunk_text(structured_dict, chunk_size, overlap)
-                chunks=self.chunk_text_adapt(structured_dict, min_chunk_size=50, max_chunk_size=512, overlap=50)
+                chunks = self.chunk_text(structured_dict, chunk_size, overlap)
+                #chunks = self.chunk_text_adapt(structured_dict, min_chunk_size=50, max_chunk_size=512, overlap=50)
                 all_chunks.extend(chunks)
                 print(colored(f"Successfully processed '{pdf_file}'", "green"))
             except Exception as e:
@@ -437,13 +413,42 @@ class PDFLoader:
         bolded_text = metadata.get("bolded_text", [])
         return any(line.strip() == line_text.strip() and bold for line, bold in bolded_text)
 
-    
-    # def remove_headers_and_footers(self,text):
-    #     lines = text.splitlines()
-    #     filtered_lines = []
-    #     for line in lines:
-    #         # Example: Remove lines that are purely numeric or match a header pattern
-    #         if not line.strip().isdigit() and "YourHeaderText" not in line:
-    #             filtered_lines.append(line)
-    #     return "\n".join(filtered_lines)
+
+# if __name__ == "__main__":
+#     import sys
+#     from termcolor import colored
+
+#     # Create an instance of your PDFLoader
+#     loader = PDFLoader()
+
+#     # 1. Parse command-line arguments (optional)
+#     #    e.g., let the user pass the folder path as an argument:
+#     if len(sys.argv) > 1:
+#         folder_path = sys.argv[1]
+#     else:
+#         # Fallback: set a default folder or prompt the user
+#         folder_path = "Dataset_Bis"  # Replace with your default folder path
+
+#     print(colored(f"Debugging PDF loading from folder: {folder_path}", "cyan"))
+
+#     # 2. Call the loading and dataset method
+#     chunks = loader.load_dataset(folder_path)
+
+#     # 3. Print out how many chunks we got
+#     print(colored(f"Total chunks: {len(chunks)}", "green"))
+
+#     # 4. (Optional) Look for specific content, e.g., "Article 52"
+#     found_article_52 = False
+#     for i, chunk_data in enumerate(chunks):
+#         content = chunk_data["content"]
+#         if "Article 52" in content or "Art. 52" in content:
+#             found_article_52 = True
+#             print(colored(f"\nFound 'Article 52' in chunk index {i}", "yellow"))
+#             print(content)  # Show first 300 characters
+#             # break  # you could break here if you only want the first match
+
+#     if not found_article_52:
+#         print(colored("No 'Article 52' text found in any chunk.", "red"))
+
+#     print(colored("Debugging complete.", "cyan"))
 

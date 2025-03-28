@@ -1,94 +1,50 @@
 # ByteForce Datascience Project
 
-## Prerequisites
-Make sure you have the following installed on your system:
+## Prérequis
+Avant de commencer, assurez-vous d'avoir installé sur votre système :
 - Git
-- A GitHub account
+- Un compte GitHub
+- Python et pip
 
-## Step 1: Fork the Repository
-1. Navigate to the GitHub repository you want to contribute to.
-2. Click on the `Fork` button in the top-right corner.
-3. GitHub will create a copy of the repository in your account.
-
-## Step 2: Clone the Forked Repository
-1. Go to your GitHub profile and navigate to the forked repository.
-2. Click on the `Code` button and copy the repository URL.
-3. Open a terminal and run the following command:
+## Étape 1 : Cloner le repository
+1. Ouvrez un terminal et exécutez la commande suivante :
    ```sh
    git clone <repository-url>
    ```
-   Replace `<repository-url>` with the URL you copied.
-4. Change into the repository directory:
+   Remplacez `<repository-url>` par l'URL du repository.
+2. Accédez au dossier cloné :
    ```sh
    cd <repository-name>
    ```
 
-## Step 3: Set Up the Upstream Repository
-1. Add the original repository as an upstream remote:
+## Étape 2 : Télécharger le dataset et le faiss_index
+1. Téléchargez les fichiers nécessaires (dataset et faiss_index). https://drive.google.com/drive/folders/1792ircTT0FdIOWBJm6G1uWuM0vhI0toA
+2. Placez-les directement dans le dossier du repository cloné, sans créer de sous-dossier, sauf si vous prévoyez de modifier le chemin d'accès dans le code.
+
+## Étape 3 : Configurer l'environnement Python (si nécessaire)
+1. (Optionnel) Créez un environnement virtuel :
    ```sh
-   git remote add upstream <original-repository-url>
+   python -m venv env
    ```
-2. Verify the remote repositories:
+2. Activez l'environnement virtuel :
+   - Sur Windows :
+     ```sh
+     env\Scripts\activate
+     ```
+   - Sur macOS/Linux :
+     ```sh
+     source env/bin/activate
+     ```
+
+## Étape 4 : Installer les dépendances
+1. Installez les packages nécessaires avec :
    ```sh
-   git remote -v
+   pip install -r requirements.txt
    ```
 
-## Step 4: Create a New Branch for a Task
-1. Fetch the latest changes from the upstream repository:
+## Étape 5 : Exécuter l'interface
+1. Lancez l'application avec Streamlit :
    ```sh
-   git fetch upstream
-   ```
-2. Ensure you're on the main branch:
-   ```sh
-   git checkout main
-   ```
-3. Merge any latest changes:
-   ```sh
-   git merge upstream/main
-   ```
-4. Create a new branch for your task:
-   ```sh
-   git checkout -b <branch-name>
-   ```
-   Replace `<branch-name>` with a meaningful name related to the task (e.g., `feature-login`, `fix-bug-123`).
-
-## Step 5: Work on the Task and Commit Changes
-1. Make the necessary changes in your branch.
-2. Stage the changes:
-   ```sh
-   git add .
-   ```
-3. Commit the changes:
-   ```sh
-   git commit -m "Describe the changes made"
-   ```
-
-## Step 6: Push the Branch to Your Fork
-1. Push your branch to GitHub:
-   ```sh
-   git push origin <branch-name>
-   ```
-
-## Step 7: Create a Pull Request
-1. Go to your GitHub repository.
-2. Click on `Compare & pull request` for the new branch.
-3. Add a title and description for the changes.
-4. Click `Create pull request`.
-5. Wait for a review and merge.
-
-## Step 8: Keep Your Fork Updated
-To avoid conflicts, regularly sync your fork with the upstream repository:
-1. Fetch the latest changes:
-   ```sh
-   git fetch upstream
-   ```
-2. Merge them into your main branch:
-   ```sh
-   git checkout main
-   git merge upstream/main
-   ```
-3. Push the updated main branch to your fork:
-   ```sh
-   git push origin main
+   streamlit run INTERFACE/interface.py
    ```
 

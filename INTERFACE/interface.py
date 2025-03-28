@@ -18,7 +18,7 @@ device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 def get_rag_instance():
     return RAG(
         embedding_model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
-        faiss_index_dir="faiss_index",
+        faiss_index_dir="../faiss_index",
         llm_model_name="gemma2:2b",
     )
 
@@ -67,7 +67,6 @@ class RAGInterface:
         with open(js_path, "r") as f:
             html(f"<script>{f.read()}</script>", height=0)
 
-    
     def _initialize_rag(_self):
         try:
             return get_rag_instance()
@@ -76,7 +75,6 @@ class RAGInterface:
                 "FAISS index not found. Please run main.py first to create the index."
             )
             st.stop()
-
 
     def run_rag(self, user_input):
         return self.rag_system.query(user_input)
@@ -112,7 +110,7 @@ class RAGInterface:
         with st.form(key="question_form"):
             user_input = st.text_input("Ask your question:")
             submit_button = st.form_submit_button("Submit")
-        
+
         # Process the query only when the user clicks the submit button
         if submit_button and user_input:
             with st.spinner("Thinking..."):
@@ -123,13 +121,12 @@ class RAGInterface:
                 st.session_state.chat_history.append(
                     {"user": user_input, "assistant": answer}
                 )
-        
+
         # Display the chat history
         for exchange in st.session_state.chat_history:
             st.markdown(f"**You:** {exchange['user']}")
             st.markdown(f"**Bot:** {exchange['assistant']}")
             st.markdown("---")
-
 
     def run_exam_mode(self):
         if len(st.session_state.exam_questions) < 10:

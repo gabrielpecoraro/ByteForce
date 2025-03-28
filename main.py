@@ -25,7 +25,7 @@ print("Number of chunks:", len(chunks))
 # Each chunk is a dict with keys "content" and "metadata"
 text_chunks = [chunk["content"] for chunk in chunks]
 metadatas = [chunk["metadata"] for chunk in chunks]
-faiss_index_dir = "faiss_index"
+faiss_index_dir = "faiss_index_test"
 
 
 model_name = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
@@ -36,7 +36,7 @@ print("Ok")
 
 vectorstore = generator.save_embeddings_to_faiss(
     chunks=text_chunks,
-    save_path="faiss_index",
+    save_path="faiss_index_test",
     metadata_list=metadatas,
 )
 

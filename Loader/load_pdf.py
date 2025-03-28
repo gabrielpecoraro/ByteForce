@@ -414,41 +414,5 @@ class PDFLoader:
         return any(line.strip() == line_text.strip() and bold for line, bold in bolded_text)
 
 
-# if __name__ == "__main__":
-#     import sys
-#     from termcolor import colored
 
-#     # Create an instance of your PDFLoader
-#     loader = PDFLoader()
-
-#     # 1. Parse command-line arguments (optional)
-#     #    e.g., let the user pass the folder path as an argument:
-#     if len(sys.argv) > 1:
-#         folder_path = sys.argv[1]
-#     else:
-#         # Fallback: set a default folder or prompt the user
-#         folder_path = "Dataset_Bis"  # Replace with your default folder path
-
-#     print(colored(f"Debugging PDF loading from folder: {folder_path}", "cyan"))
-
-#     # 2. Call the loading and dataset method
-#     chunks = loader.load_dataset(folder_path)
-
-#     # 3. Print out how many chunks we got
-#     print(colored(f"Total chunks: {len(chunks)}", "green"))
-
-#     # 4. (Optional) Look for specific content, e.g., "Article 52"
-#     found_article_52 = False
-#     for i, chunk_data in enumerate(chunks):
-#         content = chunk_data["content"]
-#         if "Article 52" in content or "Art. 52" in content:
-#             found_article_52 = True
-#             print(colored(f"\nFound 'Article 52' in chunk index {i}", "yellow"))
-#             print(content)  # Show first 300 characters
-#             # break  # you could break here if you only want the first match
-
-#     if not found_article_52:
-#         print(colored("No 'Article 52' text found in any chunk.", "red"))
-
-#     print(colored("Debugging complete.", "cyan"))
 

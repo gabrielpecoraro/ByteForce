@@ -37,13 +37,13 @@ def extract_qa_from_docx(path):
 
 
 @st.cache_data(show_spinner=False)
-def format_few_shots(qa_pairs, max_examples=10):
+def format_few_shots(qa_pairs, max_examples=4):
     """
     Formats few-shot examples to demonstrate how a highly experienced legal assistant should answer questions.
     Each example should illustrate that answers are strictly based on the provided legal context.
     """
     prompt = (
-        "Below are examples of how a highly experienced legal assistant answers legal questions using only the provided context. "
+        "Below are examples of how a highly experienced legal assistant answers legal questions. "
         "If the context is insufficient, the assistant clearly states that fact.\n\n"
     )
     for q, a in qa_pairs[:max_examples]:
@@ -87,7 +87,7 @@ class RAG:
                 qa_pairs, max_examples=max_few_shot_examples
             )
         self.test_questions = [
-            "What are the requirements for patentability under EPC Article 52?"
+            "What is the article 115 from the epc 2020"
         ]
 
         self.prompt_template = PromptTemplate(
@@ -234,43 +234,67 @@ class RAG:
 
         return self.client.generate(formatted_prompt, temperature=0.2, max_tokens=300)
 
-    def query(self, question, top_k=20):
+    def query(self, question, top_k=2, mode="enhanced"):
         try:
-            # Extract article numbers if mentioned in the question
+            # Extract different types of references
             article_number = None
-            article_keywords = set(
-                ["definition", "define", "explain", "what is", "meaning"]
-            )
-            is_definition_query = any(
-                keyword in question.lower() for keyword in article_keywords
-            )
+            chapter_number = None
+            rule_number = None
+            
+            # Enhanced keywords for different types
+            reference_keywords = {
+                "definition": ["definition", "define", "explain", "what is", "meaning"],
+                "procedure": ["how to", "procedure", "process", "steps"],
+                "requirements": ["requirements", "conditions", "criteria"],
+                "example": ["example", "case", "situation", "instance"]
+            }
 
+            # Check for different types of references in question
             if "article" in question.lower():
                 article_match = re.search(r"article\s+(\d+)", question.lower())
                 if article_match:
                     article_number = article_match.group(1)
+            
+            if "chapter" in question.lower():
+                chapter_match = re.search(r"chapter\s+(\d+)", question.lower())
+                if chapter_match:
+                    chapter_number = chapter_match.group(1)
+                    
+            if "rule" in question.lower():
+                rule_match = re.search(r"rule\s+(\d+)", question.lower())
+                if rule_match:
+                    rule_number = rule_match.group(1)
 
-            # Enhanced search strategy
+            # Build search queries based on detected references
             search_queries = []
-
-            # Add article-specific queries
+            
             if article_number:
-                search_queries.extend(
-                    [
-                        f"article {article_number} definition",
-                        f"article {article_number} requirements",
-                        f"article {article_number} explanation",
-                        f"meaning of article {article_number}",
-                    ]
-                )
+                search_queries.extend([
+                    f"article {article_number} EPC",
+                    f"article {article_number} PCT",
+                    f"article {article_number} guidelines",
+                    f"article {article_number} case law",
+                ])
+                
+            if chapter_number:
+                search_queries.extend([
+                    f"chapter {chapter_number} guidelines",
+                    f"chapter {chapter_number} explanation",
+                ])
+                
+            if rule_number:
+                search_queries.extend([
+                    f"rule {rule_number} PCT",
+                    f"rule {rule_number} implementation",
+                ])
 
             # Add the original question
             search_queries.append(question)
 
-            # Collect documents from all queries
+            # Collect and categorize documents
             all_docs = []
             for query in search_queries:
-                docs = self.vectorstore.similarity_search(query, k=5)
+                docs = self.vectorstore.similarity_search(query, top_k)
                 all_docs.extend(docs)
 
             # Remove duplicates while preserving order
@@ -281,98 +305,148 @@ class RAG:
                     seen.add(doc.page_content)
                     unique_docs.append(doc)
 
-            # Categorize documents with enhanced metadata handling
-            primary_docs = []
-            definition_docs = []
-            guideline_docs = []
-            supporting_docs = []
+            # Enhanced document categorization
+            categorized_docs = {
+                "epc": [],
+                "pct": [],
+                "guidelines": [],
+                "case_law": [],
+                "questions": [],
+                "answers": []
+            }
 
             for doc in unique_docs:
                 content = doc.page_content.strip()
-                meta = (
-                    doc.metadata
-                    if isinstance(doc.metadata, dict)
-                    else {"source": "EPC"}
-                )
+                meta = doc.metadata if isinstance(doc.metadata, dict) else {"source": "unknown"}
+                
+                # Categorize based on metadata type and content
+                doc_type = meta.get("type", "unknown").lower()
+                doc_year = meta.get("year", "unknown")
+                
+                doc_entry = {
+                    "content": content,
+                    "year": str(doc_year),  # Convert year to string
+                    "source": meta.get("source", "unknown")
+                }
 
-                # Enhanced categorization logic
-                if article_number and f"article {article_number}" in content.lower():
-                    if is_definition_query and any(
-                        term in content.lower() for term in article_keywords
-                    ):
-                        definition_docs.append((meta, content))
-                    else:
-                        primary_docs.append((meta, content))
-                elif "guideline" in str(meta).lower():
-                    guideline_docs.append((meta, content))
-                elif any(
-                    term in content.lower()
-                    for term in ["article", "rule", "regulation"]
-                ):
-                    supporting_docs.append((meta, content))
+                if doc_type in categorized_docs:
+                    categorized_docs[doc_type].append(doc_entry)
+                elif "epc" in content.lower():
+                    categorized_docs["epc"].append(doc_entry)
+                elif "pct" in content.lower():
+                    categorized_docs["pct"].append(doc_entry)
 
-            # Build structured context
+            # Build enhanced context with proper attribution
             context_parts = []
 
-            # Add definitions first if requested
-            if definition_docs:
-                context_parts.append("## Article Definition:")
-                for meta, content in definition_docs[:2]:
-                    context_parts.append(f"{content}")
+            # Add EPC provisions
+            if categorized_docs["epc"]:
+                context_parts.append("## EPC Provisions")
+                for doc in categorized_docs["epc"][:2]:
+                    context_parts.append(f"From EPC ({doc['year']}):\n{doc['content']}")
 
-            # Add primary content
-            if primary_docs:
-                context_parts.append("\n## Legal Provisions:")
-                for meta, content in primary_docs[:3]:
-                    source = meta.get("source", "EPC")
-                    context_parts.append(f"From {source}:\n{content}")
+            # Add PCT provisions
+            if categorized_docs["pct"]:
+                context_parts.append("\n## PCT Provisions")
+                for doc in categorized_docs["pct"][:2]:
+                    context_parts.append(f"From PCT ({doc['year']}):\n{doc['content']}")
 
-            # Add relevant guidelines
-            if guideline_docs:
-                context_parts.append("\n## Implementation Guidelines:")
-                for meta, content in guideline_docs[:2]:
-                    context_parts.append(content)
+            # Add Guidelines
+            if categorized_docs["guidelines"]:
+                context_parts.append("\n## Guidelines")
+                for doc in categorized_docs["guidelines"][:2]:
+                    context_parts.append(f"Guidelines ({doc['year']}):\n{doc['content']}")
 
-            # Add supporting context
-            if supporting_docs:
-                context_parts.append("\n## Related Provisions:")
-                for meta, content in supporting_docs[:2]:
-                    context_parts.append(content)
+            # Add Case Law
+            if categorized_docs["case_law"]:
+                context_parts.append("\n## Relevant Case Law")
+                for doc in categorized_docs["case_law"][:2]:
+                    context_parts.append(f"Case Law ({doc['year']}):\n{doc['content']}")
+
+            # Add Examples
+            if categorized_docs["questions"]:
+                context_parts.append("\n## Related Questions")
+                for doc in categorized_docs["questions"][:2]:
+                    context_parts.append(f"Example Question ({doc['year']}):\n{doc['content']}")
+
+            # Add Q&A References
+            if categorized_docs["answers"]:
+                context_parts.append("\n## Related Answers")
+                for doc in categorized_docs["answers"][:2]:
+                    context_parts.append(f"Example Answer ({doc['year']}):\n{doc['content']}")
 
             # Combine context with markdown formatting
             context = "\n\n".join(context_parts)
 
-            # Enhanced prompt template with markdown
-            enhanced_prompt = """You are an expert European Patent Attorney providing comprehensive answers about patent law.
-            Format your response using Markdown and following this structure:
+            if mode == "enhanced":
+                prompt_template = PromptTemplate(
+                    template="""You are an expert European Patent Attorney providing comprehensive answers about patent law.
+Format your response using Markdown and following this structure:
 
-            # Answer Summary
-            Brief overview of the key points
+# Answer Summary
+Brief overview of the key points
 
-            ## Legal Framework
-            Cite and explain the relevant legal provisions
+## Legal Framework
+### EPC Framework
+- Articles and their requirements
+- Relevant chapters
+- Implementation guidelines
 
-            ## Detailed Explanation
-            Break down the concepts and their implications
+### PCT Framework
+- Related rules and articles
+- Implementation requirements
+- Relationship with EPC provisions
 
-            ## Practical Application
-            Provide practical context and examples if available
+## Detailed Analysis
+- Interpretation of provisions
+- Technical requirements
+- Procedural aspects
 
-            Context:
-            {context}
+## Practical Implementation
+### Guidelines Application
+- Relevant sections
+- Best practices
+- Common procedures
 
-            Question: {question}
+### Supporting Evidence
+- Case law examples
+- Similar situations
+- Q&A references
 
-            Answer:"""
+Context:
+{context}
 
-            # Generate response
-            formatted_prompt = PromptTemplate(
-                template=enhanced_prompt, input_variables=["context", "question"]
-            ).format(context=context, question=question)
+Question: {question}
 
-            response = self.client.generate(
-                formatted_prompt, temperature=0.2, max_tokens=1500
-            )
+Answer:""",
+                    input_variables=["context", "question"]
+                )
+            else:
+                # Use base prompt template for simpler responses
+                prompt_template = self.prompt_template
+
+            # Add few-shot examples if available
+            if self.few_shot_prompt:
+                formatted_prompt = (
+                    self.few_shot_prompt + "\n\n" +
+                    prompt_template.format(context=context, question=question)
+                )
+            else:
+                formatted_prompt = prompt_template.format(context=context, question=question)
+
+            # Generate response with appropriate parameters based on mode
+            if mode == "enhanced":
+                response = self.client.generate(
+                    formatted_prompt,
+                    temperature=0.2,
+                    max_tokens=1500
+                )
+            else:
+                response = self.client.generate(
+                    formatted_prompt,
+                    temperature=0.3,
+                    max_tokens=800
+                )
 
             return response.strip()
 

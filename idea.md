@@ -1,35 +1,50 @@
-# Project Ideas
+# ByteForce Datascience Project
 
-Welcome to the **Ideas File**! This document serves as a central place for contributors to brainstorm and share potential improvements, features, or enhancements for the project. Feel free to add your ideas and discuss them with the team!
+## Prérequis
+Avant de commencer, assurez-vous d'avoir installé sur votre système :
+- Git
+- Un compte GitHub
+- Python et pip
 
-## How to Contribute an Idea
-1. **Add your idea** in the appropriate section below.
-2. **Provide a brief description** explaining the concept and its potential impact.
-3. **Optionally, add a priority label** (e.g., [High], [Medium], [Low]).
-4. **Discuss your idea with others** through comments or issues.
+## Étape 1 : Cloner le repository
+1. Ouvrez un terminal et exécutez la commande suivante :
+   ```sh
+   git clone <repository-url>
+   ```
+   Remplacez `<repository-url>` par l'URL du repository.
+2. Accédez au dossier cloné :
+   ```sh
+   cd <repository-name>
+   ```
 
----
+## Étape 2 : Télécharger le dataset et le faiss_index
+1. Téléchargez les fichiers nécessaires (dataset et faiss_index). https://drive.google.com/drive/folders/1792ircTT0FdIOWBJm6G1uWuM0vhI0toA
+2. Placez-les directement dans le dossier du repository cloné, sans créer de sous-dossier, sauf si vous prévoyez de modifier le chemin d'accès dans le code.
 
-## Proposed Ideas Templates 
-### 1. Problems
-**Description:** The current problems we are facing
-- using a local model and which one- bar not showing - using the same model directly from embedding to embed- solving the effeciency and integrate streamlit
-**Priority:** [High]
-**Assigned To (Optional):** @username
+## Étape 3 : Configurer l'environnement Python (si nécessaire)
+1. (Optionnel) Créez un environnement virtuel :
+   ```sh
+   python -m venv env
+   ```
+2. Activez l'environnement virtuel :
+   - Sur Windows :
+     ```sh
+     env\Scripts\activate
+     ```
+   - Sur macOS/Linux :
+     ```sh
+     source env/bin/activate
+     ```
 
-### 2. Other current problems
-**Description:** RAG and llm: before locally running need requirments and downlading /installing/ for foot print use the valuations methods+ efficiency(latency bleu score ..) sufficiency trade off (justify what we do is good for envirm=nment) explore quantization
-**Priority:** [High]
-**Assigned To (Optional):** @username
+## Étape 4 : Installer les dépendances
+1. Installez les packages nécessaires avec :
+   ```sh
+   pip install -r requirements.txt
+   ```
 
----
-## Implementation Idea
-
-Add ideas about the implementation of an architecture or just programming
-
-## Architecture Idea
-
-Add ideas about an architecture flow and so forth
-
-Happy brainstorming! 🚀
+## Étape 5 : Exécuter l'interface
+1. Lancez l'application avec Streamlit :
+   ```sh
+   streamlit run INTERFACE/interface.py
+   ```
 

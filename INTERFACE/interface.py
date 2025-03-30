@@ -206,9 +206,5 @@ class RAGInterface:
 
 
 if __name__ == "__main__":
-    tracker =OfflineEmissionsTracker(country_iso_code="FRA")
-    tracker.start()  # Start tracking emissions
     app = RAGInterface()
     app.run()
-    emissions: float = tracker.stop()
-    print(emissions) # Stop tracking emissions and calculate the total emissions

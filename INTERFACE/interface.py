@@ -11,8 +11,13 @@ import random
 from RAG.RAG import RAG
 from streamlit.components.v1 import html
 
-# Activate GPU if available
-device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+#Activate GPU if available
+device = torch.device("cuda" if torch.backends.mps.is_available() else "cpu")
+if device.type == "cuda":
+    torch.cuda.set_device(0)
+    print("Using GPU")
+else:
+    print("Using CPU")
 
 
 @st.cache_resource(show_spinner=False)

@@ -93,7 +93,7 @@ class RAG:
         self.prompt_template = PromptTemplate(
             template=(
                 "You are an expert European Patent Attorney answering questions about patent law. "
-                "Provide a clear and detailed answer using ONLY the information from the context below. "
+                "Provide a clear and detailed answer using ONLY the information from the context below retrieved from the database. "
                 "If specific articles or guidelines are mentioned in the context, cite them.\n\n"
                 "If the context contains the information:\n"
                 "- Provide a direct, factual answer\n"
@@ -234,7 +234,7 @@ class RAG:
 
         return self.client.generate(formatted_prompt, temperature=0.2, max_tokens=300)
 
-    def query(self, question, top_k=2, mode="enhanced"):
+    def query(self, question, top_k=1000, mode="enhanced"):
         try:
             # Extract different types of references
             article_number = None
@@ -294,7 +294,9 @@ class RAG:
             # Collect and categorize documents
             all_docs = []
             for query in search_queries:
-                docs = self.vectorstore.similarity_search(query, top_k)
+                docs_with_scores = self.vectorstore.similarity_search_with_score(query, top_k)
+                docs = [doc for doc, score in docs_with_scores if score > 0.9]
+
                 all_docs.extend(docs)
 
             # Remove duplicates while preserving order
@@ -412,7 +414,7 @@ Brief overview of the key points
 - Case law examples
 - Similar situations
 - Q&A references
-
+ 
 Context:
 {context}
 
